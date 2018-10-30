@@ -1,0 +1,53 @@
+{% extends 'template.html' %}
+{% load staticfiles %}
+
+{% block css %}
+    <link rel="stylesheet" type="text/css" href="{% static 'css/profil.css' %}" />
+{% endblock %}
+
+{% block js %}
+<script type="text/javascript" src="{% static 'js/profil.js' %}"></script>
+{%endblock%}
+{% block titre %}
+	<div id = 'titre' > 
+          <h1 class="display-3">Mon profil</h1>
+	</div>
+{% endblock %}
+
+
+{%block content %}
+	
+      <div class="container">
+	<div class = cadre >
+	<form id = form method = post action="{% url 'profil' %}">
+	{% csrf_token %}
+	
+	<p class = titre_cadre> Mon profil </p>
+	{% if message %} <p class = message> {{message}} </p> {%endif%} 
+	<p> Nom : <span id = last_name>{{user.last_name}}</span> <input type = text id = form_last_name name = last_name value = "{{user.last_name}}" placeholder = "Nom" style='display:none' required> </p>
+	<p> Prénom : <span id = first_name>{{user.first_name}}</span> <input type = text id = form_first_name name = first_name value = "{{user.first_name}}" placeholder = "Prénom" style='display:none' required> </p> 
+	<p> Statut : <span id = statut>{{client.statut.nom}} </span>
+		<select style = "display:none" name = 'statut' id = form_statut>
+		  {%for statut in liste_statut %}
+		  <option value='{{statut.element}}' {% if statut.booleen %} selected {%endif%}>{{statut.element}}</option>
+		{%endfor%}
+		</select>	
+	 </p>
+	<p> Réduction : <span id = reduction>{{client.reduction.nom}} </span>
+		<select id = form_reduction style = "display:none" name = 'reduction'>
+		{%for reduction in liste_reduction %}
+		  <option value='{{reduction.element}}' {% if reduction.booleen %} selected {%endif%}>{{reduction.element}}</option>
+		{%endfor%}
+		</select>
+	</p>
+	<p> Mail : <span id = email> {{user.email}}</span> <input type = email id = form_email name = email value = "{{user.email}}" placeholder = "email" style='display:none' required></p>
+	<p id = bouton_editer><a id=editer_profil class="btn btn-primary btn-lg" href="#" role="button" onclick="editer()">Editer profil</a></p>
+	<p id = bouton_valider style="display:none"><a id=editer_profil class="btn btn-primary btn-lg" href="#" role="button" onclick="valider()">Valider profil</a></p>
+	</form>
+          </div>
+        </div>
+
+        <hr>
+
+      </div> <!-- /container -->
+{% endblock %}

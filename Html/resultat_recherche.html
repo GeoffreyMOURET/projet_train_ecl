@@ -1,0 +1,71 @@
+{% extends 'template.html' %}
+{% load staticfiles %}
+
+{% block css %}
+    <link rel="stylesheet" type="text/css" href="{% static 'css/resultat_recherche.css' %}" />
+{% endblock %}
+
+{% block js %}
+<script type="text/javascript" src="{% static 'js/reserver.js' %}"></script>
+{%endblock%}
+
+{% block titre %}
+	<div id = 'titre' > 
+          <h1 class="display-3">Recherche de train</h1>
+          <p></p>
+	</div>
+{% endblock %}
+
+
+{%block content %}
+	
+      <div class="container">
+	<div class = 'entete'>
+		<form id=form action="{% url 'rechercher_billet' %}" method = post>
+	{% csrf_token %}
+		<input name=gare_depart type=hidden value="{{requete.gare_depart}}">
+		<input name=gare_arrivee type=hidden value="{{requete.gare_arrivee}}">
+		<input name=date type=hidden value="{{requete.date}}">
+		<input name=modifier type=hidden value=1>
+	        <p class = bouton><a class="btn btn-primary btn-lg" role="button" style='color:white' onclick="submit()">Modifier la recherche</a></p>
+		</form>
+		<p class = 'nom_requete'> 
+		Résumé de la recherche
+		</p>
+		<p class = 'resume_requete'>
+			Gare de départ : <span> {{gare_depart}} </span> Gare d'arrivée : <span> {{gare_arrivee}} </span> Date : <span> {{date}} </span>
+		</p>
+	</div>
+	{% for train in liste_train %}
+<form action = {%url 'reserver_billet' %} method = post>
+	{% csrf_token %}
+	<div class = train>
+		<input name = token type = hidden value = {{token}}>
+		<input name = train_id type = hidden value = {{train.numero}}>
+		<p class = titre_train> Train n° <span>{{train.numero}}</span> au départ de <span> {{train.gare_depart}} </span> le <span> {{train.date_depart}} </span> à <span> {{train.heure_depart}} </span> </p>
+		<input name = gare_arret_depart_id type = hidden value = {{train.gare_arret_depart_id}}>
+		<p class = contenu> 
+		 Gare de départ : <span> {{train.gare_depart}} </span> le <span> {{train.date_depart}} </span> à <span> {{train.heure_depart}} </span>
+		</p>
+		<input name = gare_arret_arrivee_id type = hidden value = {{train.gare_arret_arrivee_id}}>
+		<p class = contenu> 
+		 Gare d'arrivée : <span> {{train.gare_arrivee}} </span> le <span> {{train.date_arrivee}} </span> à <span> {{train.heure_arrivee}} </span>
+		</p>
+		<p class = contenu> 
+		 Nombre de places restantes : <span> {% if train.complet %} Complet {% else %} {{train.place_restante}} {% endif %} </span>
+		</p>
+		<p class = prix>
+		{% if train.complet %}Complet{% else %} {{train.prix}} € {% endif %}
+		</p>
+		<p class = contenu>
+		Placement préféré : <select name = 'cote' size='1'> <option> Fenêtre <option> Couloir <option> Indifférent </select>
+		</p>
+		{% if train.complet %}  {% else %} 
+	        <p class = bouton><a class="btn btn-primary btn-lg" role="button" style="background-color:green;border-color:green;color:white;" onclick="reserver(this)">Réserver</a></p>
+		 {% endif %}
+	</div>
+</form>
+	{% endfor %}
+        
+      </div> <!-- /container -->
+{% endblock %}

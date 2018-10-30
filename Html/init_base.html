@@ -1,0 +1,35 @@
+{% extends 'template.html' %}
+{% load staticfiles %}
+
+{% block css %}
+    <link rel="stylesheet" type="text/css" href="{% static 'css/accueil.css' %}" />
+{% endblock %}
+
+{% block js %}
+<script type="text/javascript" src="{% static 'js/accueil.js' %}"></script>
+{%endblock%}
+
+{% block titre %}
+	<div id = 'titre' > 
+          <h1 class="display-3">Initialiser la base</h1>
+          <p></p>
+	</div>
+{% endblock %}
+
+
+{%block content %}
+	
+      <div class="container">
+	<div class = formulaire>
+	<form id = form action="{% url 'init_base' %}" method="post">
+	{% csrf_token %}
+        <p><a class="btn btn-primary btn-lg" role="button" onclick="submit()">Initialiser la base</a></p>
+	
+	</form>
+
+	</div>
+
+
+        
+      </div> <!-- /container -->
+{% endblock %}

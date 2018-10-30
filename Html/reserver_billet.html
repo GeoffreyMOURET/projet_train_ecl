@@ -1,0 +1,59 @@
+{% extends 'template.html' %}
+{% load staticfiles %}
+
+{% block css %}
+    <link rel="stylesheet" type="text/css" href="{% static 'css/resultat_recherche.css' %}" />
+{% endblock %}
+
+{% block js %}
+<script type="text/javascript" src="{% static 'js/accueil.js' %}"></script>
+{%endblock%}
+{% block titre %}
+	<div id = 'titre' > 
+          <h1 class="display-3">Reservation</h1>
+	</div>
+{% endblock %}
+
+
+{%block content %}
+	
+      <div class="container">
+	<p class = 'nom_requete'> 
+		Votre réservation
+	</p>
+	<p class = resume_requete>
+		Merci de vous rendre en agence afin de payer votre réservation. Vous avez une semaine avant que la réservation soit annulée.
+	</p>
+	<div class = train>
+		
+		<p class = titre_train> Train n° <span>{{reservation.numero}}</span> au départ de <span> {{reservation.gare_depart}} </span> le <span> {{reservation.date_depart}} </span> à <span> {{reservation.heure_depart}} </span> </p>
+		<p class = contenu> 
+		 Gare de départ : <span> {{reservation.gare_depart}} </span> le <span> {{reservation.date_depart}} </span> à <span> {{reservation.heure_depart}} </span>
+		</p>
+		<p class = contenu> 
+		 Gare d'arrivée : <span> {{reservation.gare_arrivee}} </span> le <span> {{reservation.date_arrivee}} </span> à <span> {{reservation.heure_arrivee}} </span>
+		</p>
+		<p class = prix>
+		{{reservation.prix}} € 
+		</p>
+		{% if reservation.payee %}
+		<p class = payee>
+		  Payée
+		</p>
+		{% else %}
+		<p class = non_payee>
+		  Non-Payée
+		</p>
+		{% endif %}
+		<p class = contenu>
+		Voiture n° <span>{{reservation.voiture}}</span> 
+		</p>
+		<p class = contenu>
+		Place n°<span>{{reservation.place|default:" Non transmise "}}</span>
+		</p>
+        </div>
+
+        <hr>
+
+      </div> <!-- /container -->
+{% endblock %}

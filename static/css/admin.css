@@ -1,0 +1,72 @@
+.jumbotron {
+    background-image: url('../image/bandereau.jpg');
+    background-size: 100% 100%;
+    background-repeat: no-repeat;
+
+}
+label {
+    display:block;
+}
+label.inline {
+    display:inline;
+}
+
+.formulaire {
+position:relative;
+border:solid;
+background-color:#DDDDDD;
+margin:20px 15%;
+text-align:center;
+
+}
+
+.formulaire p {
+font-size:1.4em;
+padding:5px;
+font-weight:bold;
+}
+
+.container a {
+color:white;
+}
+
+.container .bouton {
+text-align:center;
+}
+.container .bouton a {
+background-color:green;
+border:none;
+}
+
+.container .titre {
+font-size:1.4em;
+font-weight:bold;
+text-align:center;
+}
+
+.formulaire .erreur {
+margin:0;
+color:red;
+}
+.formulaire label p {
+font-size:1.2em;
+font-weight:normal;
+}
+
+.formulaire label input {
+width:60%;
+display:inline;
+}
+
+.block_gare {
+margin:10px;
+}
+
+#creer_compte {
+font-size:14px;
+padding:5px;
+position:absolute;
+margin:5px;
+bottom:0;
+right:0
+}

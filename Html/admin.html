@@ -1,0 +1,143 @@
+{% extends 'template.html' %}
+{% load staticfiles %}
+
+{% block css %}
+    <link rel="stylesheet" type="text/css" href="{% static 'css/admin.css' %}" />
+    <link rel="stylesheet" type="text/css" href="{% static 'css/resultat_recherche.css' %}" />
+{% endblock %}
+
+{% block js %}
+<script type="text/javascript" src="{% static 'js/admin.js' %}"></script>
+{%endblock%}
+{% block titre %}
+	<div id = 'titre' > 
+          <h1 class="display-3">Administration du site</h1>
+          <p>A travers cette interface, vous pouvez ajouter des trains et valider des réservations.</p>
+	</div>
+{% endblock %}
+
+
+{%block content %}
+	
+      <div class="container">
+	<div class = formulaire >
+	<form id = form action="{% url 'admin_interface' %}" method="post" >
+	{% csrf_token %}
+	<input name = type value = "train" type = hidden> 
+	<datalist id="gare">
+		{% for gare in liste_gare%}
+			<option value="{{gare}}">
+		{% endfor %}
+		</datalist>
+	<datalist id="agence">
+		{% for agence in liste_agence%}
+			<option value="{{agence}}">
+		{% endfor %}
+		</datalist>
+	<p> Ajouter un train </p>
+	{% if message %}
+	<p class = erreur> {{message}} </p>
+	{% endif %}
+	<label id =liste_gare for = 'gares'> <p>Liste de gares (dans l'ordre, du départ à l'arrivée) : </p>
+	<div class = block_gare>
+	<input id = "gares" type=text name="gares" placeholder = "Gare" list = gare autocomplete="off" required>
+	<input id = "dates" type=date name="dates" placeholder = "Date" required>
+	<input id = "heures" type=time name="heures" placeholder = "Heure" required>
+	</div>
+	
+	<div class = block_gare>
+	<input id = "gares" type=text name="gares" placeholder = "Gare" list = gare autocomplete="off" required>
+	<input id = "dates" type=date name="dates" placeholder = "Date" required>
+	<input id = "heures" type=time name="heures" placeholder = "Heure" required>
+	</div>	
+	</label>
+        <p><a class="btn btn-primary btn-lg" role="button" onclick="add_gare()" style='color:white'>Ajouter une gare</a></p>
+	
+	<label id =liste_voiture for = 'voitures'> <p>Liste des voitures (entrer le nombre de place par voitures) : </p>
+	<div class = block_gare>
+	<input id = "voitures" type=number name="voitures" placeholder = "Nombre de places" autocomplete="off" required>
+	</div>
+	
+	</label>
+        <p><a class="btn btn-primary btn-lg" role="button" onclick="add_voiture()" style='color:white'>Ajouter une voiture</a></p>
+	
+	<label for = 'prix'> Prix du billet brut : 
+	<input id = "prix" type=number name="prix" step = 0.01 min=0 required> €</label>
+        <p><a class="btn btn-primary btn-lg" style='color:white' role="button" onclick="submit()">Créer un train</a></p>
+	
+	</form>
+
+	</div>
+
+
+
+        <hr>
+	
+
+      </div> <!-- /container -->
+	
+		
+      <div class="container">
+	<div class = formulaire >
+	<form id = form_2 action="{% url 'admin_recherche_billet' %}" method="post" >
+	{% csrf_token %}
+	<input name = type value = "validation" type = hidden> 
+	
+	<p> Valider un billet </p>
+	{% if message_2 %}
+	<p class = erreur> {{message_2}} </p>
+	{% endif %}
+	
+	<label for = 'numero_billet'> Numéro du billet : 
+	<input id = "numero_billet" type=text name="numero_billet" autocomplete="off" required> </label>
+	<label for = 'agence'> Nom de l'agence : 
+	<input id = agence_billet type=text name="agence" list=agence autocomplete="off" required> </label>
+        <p><a class="btn btn-primary btn-lg" role="button" onclick="submit_2()" style='color:white'>Rechercher billet</a></p>
+	
+	</form>
+
+	</div>
+
+
+
+        <hr>
+      </div> <!-- /container -->
+
+      <div class="container" id = apercu style='display:none'>
+	<p class = titre> Aperçu du billet </p>
+	<div class = train>
+		
+		<p class = titre_train> Train n° <span id = billet_numero></span> au départ de <span id = billet_gare_depart></span> le <span id = billet_date_depart></span> à <span id = billet_heure_depart></span> </p>
+		<p class = contenu> 
+		 Gare de départ : <span id = billet_gare_depart_2></span> le <span id = billet_date_depart_2></span> à <span id = billet_heure_depart_2></span>
+		</p>
+		<p class = contenu> 
+		 Gare d'arrivée : <span id = billet_gare_arrivee_2></span> le <span id = billet_date_arrivee_2></span> à <span id = billet_heure_arrivee_2></span>
+		</p>
+		<p id = billet_prix class = prix>
+		 € 
+		</p>
+		<p id=payee>
+		</p>
+		<p class = contenu>
+		Voiture n° <span id = billet_voiture></span> 
+		</p>
+		<p class = contenu>
+		Place n°<span id = billet_place></span>
+		</p>
+		<p class = contenu>
+		Reduction : <span id = billet_reduction></span>
+		</p>
+        </div>
+	<form id = form_3 action="{% url 'admin_paiement' %}" method="post" >
+	{% csrf_token %}
+	<input type = hidden id = numero_paiement name = numero>
+	<input type = hidden id = agence_paiement name = agence>
+	</form>
+	<p id = valider_paiement class=bouton ><a class="btn btn-primary btn-lg" role="button" onclick="submit_3()" style='color:white'>Enregistrer le paiement</a></p>
+
+
+        <hr>
+      </div> <!-- /container -->
+	
+{% endblock %}

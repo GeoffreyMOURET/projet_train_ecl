@@ -1,0 +1,69 @@
+{% extends 'template.html' %}
+{% load staticfiles %}
+
+{% block css %}
+    <link rel="stylesheet" type="text/css" href="{% static 'css/accueil.css' %}" />
+{% endblock %}
+
+{% block js %}
+<script type="text/javascript" src="{% static 'js/accueil.js' %}"></script>
+{%endblock%}
+{% block titre %}
+	<div id = 'titre' > 
+          <h1 class="display-3">Réservation de billets</h1>
+          <p>Ce site Internet permet à un utilisateur des trains ECL de réserver ses billets directement en ligne. Ce site est un site pastiche</p>
+	</div>
+{% endblock %}
+
+
+{%block content %}
+	
+      <div class="container">
+	<div class = formulaire >
+	<form id = form action="{% url 'rechercher_billet' %}" method="post" >
+	{% csrf_token %}
+	<input type=hidden name=modifier value=0>
+	<datalist id="gare">
+		{% for gare in liste_gare%}
+			<option value="{{gare}}">
+		{% endfor %}
+		</datalist>
+	<p> Rechercher un train </p>
+
+	<label for = 'gare_depart'> Gare de départ : 
+	<input id = "gare_depart" type=text name="gare_depart" placeholder = "Gare de départ" list = gare autocomplete="off" required></label>
+
+	<label for = 'gare_arrivee'> Gare d'arrivée : 
+	<input id = "gare_arrivee" type=text name="gare_arrivee" placeholder = "Gare d'arrivée" list = gare autocomplete="off" required> </label>
+	<label for = 'date'> Date : 
+	<input id = "date" type=date name="date" placeholder = "Gare de départ" required></label>
+        <p><a class="btn btn-primary btn-lg" href="#" role="button" onclick="submit()">Rechercher</a></p>
+	
+	</form>
+
+	</div>
+
+
+        <!-- Example row of columns -->
+        <div class="row">
+          <div class="col-md-4">
+            <h2>Réserver un billet</h2>
+            <p> La réservation de tous les billets de train ECL est possible grâce à ce site. Tous les trajets pris en charge par les trains ECL sont réservables.</p>
+            <p><a class="btn btn-secondary" href="#" role="button">Accéder à la réservation &raquo;</a></p>
+          </div>
+          <div class="col-md-4">
+            <h2>Consulter mes trajets</h2>
+            <p> Si vous êtes connecté à votre espace personnalisé, vous pouvez alors accéder à tous les billets vous concernant. </p>
+            <p><a class="btn btn-secondary" href="#" role="button">Consulter mes trajets &raquo;</a></p>
+          </div>
+          <div class="col-md-4">
+            <h2>Se créer un compte</h2>
+            <p>Si vous ne vous êtes pas encore créé d'espace personnalisé, vous pouvez le faire en cliquant sur le lien ci dessous. Vous devez posséder un espace client afin de réserver un billet de train.</p>
+            <p><a class="btn btn-secondary" href="#" role="button">Créer un compte &raquo;</a></p>
+          </div>
+        </div>
+
+        <hr>
+
+      </div> <!-- /container -->
+{% endblock %}

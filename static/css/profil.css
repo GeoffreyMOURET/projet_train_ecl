@@ -1,0 +1,46 @@
+.jumbotron {
+    background-image: url('../image/bandereau.jpg');
+    background-size: 100% 100%;
+    background-repeat: no-repeat;
+
+}
+
+.cadre {
+position:relative;
+border-radius:10px;
+background-color:#DDDDDD;
+margin:20px 15%;
+padding-bottom:5px;
+text-align:center;
+
+}
+
+.cadre .titre_cadre {
+font-size:1.6em;
+font-weight:bold;
+padding:5px;
+}
+.cadre p {
+font-size:1.2em;
+margin:5px;
+margin-bottom:5px;
+}
+.cadre span {
+font-weight:bold
+}
+
+#editer_profil {
+font-size:14px;
+padding:5px;
+position:absolute;
+margin:5px;
+bottom:0;
+right:0
+}
+
+.cadre .message {
+font-weight:bold;
+color:red;
+}
+
+
