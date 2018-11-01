@@ -18,7 +18,6 @@ def token_generator(size=200, chars=string.ascii_lowercase + string.ascii_upperc
 # Create your views here.
 
 def render(request, html, dico = {}):
-	print(connection.queries)
 	for k in connection.queries:
 		file = open('requete.sql','a')
 		file.write(k['sql']+'\n')
