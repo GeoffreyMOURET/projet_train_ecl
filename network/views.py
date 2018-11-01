@@ -4,6 +4,7 @@ from django.http import HttpResponseRedirect, Http404, HttpResponse, JsonRespons
 from django.contrib.auth.models import User
 from django.urls import reverse
 from django.db import connection
+from django.db.models import Q
 
 from .models import *
 from datetime import datetime, timedelta
@@ -66,7 +67,7 @@ def rechercher_trajet(request):
 			gare_arrivee = Gare.objects.filter(nom = gare_arrivee).get()
 			date = datetime.strptime(form['date'], '%Y-%m-%d')
 			date_fin = date + timedelta(days=1, hours=0, minutes=0, seconds=0)
-			liste_train_depart = GareArret.objects.filter(gare = gare_depart).values_list('train_id', flat = True)
+			liste_train_depart = GareArret.objects.filter(heure__gte = date).filter(heure__lte = date_fin).filter(gare = gare_depart).values_list('train_id', flat = True)
 			liste_train = []
 			for train in liste_train_depart:
 				liste_gare = GareArret.objects.filter(train_id = train)
@@ -79,7 +80,8 @@ def rechercher_trajet(request):
 				print(type(gare_depart))
 				gare_arret_depart = GareArret.objects.filter(train_id = train).filter(gare_id = gare_depart.id).get()
 				gare_arret_arrivee = GareArret.objects.filter(train_id = train).filter(gare = gare_arrivee).get()
-				nb_place = Place.objects.filter(voiture__train = train).count() - Billet.objects.filter(place__voiture__train=train).count()
+				billet_dispo = Billet.objects.filter(place__voiture__train=train).filter(gare_depart__numero__lte = gare_arret_arrivee.numero-1).filter(gare_arrivee__numero__gte = gare_arret_depart.numero+1)
+				nb_place = Place.objects.filter(voiture__train = train).count() - billet_dispo.count()
 				gare_depart_str = gare_arret_depart.gare.nom
 				gare_arrivee_str = gare_arret_arrivee.gare.nom
 				date_depart = gare_arret_depart.heure.strftime('%d/%m/%Y')
