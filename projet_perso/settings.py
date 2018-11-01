@@ -81,10 +81,10 @@ DATABASES = {
 
     'default': {
         'ENGINE': 'django.db.backends.mysql',   # Backends disponibles : 'postgresql', 'mysql', 'sqlite3' et 'oracle'.
-        'NAME': 'projet',             # Nom de la base de données
-        'USER': 'root',
-        'PASSWORD': 'toor',        
-        'HOST': '127.0.0.1',                    # Utile si votre base de données est sur une autre machine
+        'NAME': 'projettrainecl$projet',             # Nom de la base de données
+        'USER': 'projettrainecl',
+        'PASSWORD': 'geoffrey',        
+        'HOST': 'projettrainecl.mysql.pythonanywhere-services.com',                    # Utile si votre base de données est sur une autre machine
         'PORT': '3306',                         # ... et si elle utilise un autre port que celui par défaut
     }
 
@@ -127,7 +127,7 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/2.0/howto/static-files/
 
-STATIC_ROOT = "/home/geoffrey/projet_perso/"
+STATIC_ROOT = BASE_DIR
 
 STATIC_URL = '/static/'
 
