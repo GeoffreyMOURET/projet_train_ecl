@@ -13,11 +13,39 @@ from datetime import datetime, timedelta
 import random
 import string
 
+def get_liste_gare():
+	with connection.cursor() as cursor:
+		cursor.execute("SELECT `gare`.`nom` FROM `gare`")
+		liste_tuple = cursor.fetchall()
+		liste_gare = []
+		for k in liste_tuple:
+			liste_gare.append(k[0])
+		return liste_gare
+
+def get_liste_statut():
+	with connection.cursor() as cursor:
+		cursor.execute("SELECT `statut`.`nom` FROM `statut`")
+		liste_tuple = cursor.fetchall()
+		liste_statut = []
+		for k in liste_tuple:
+			liste_statut.append(k[0])
+		return liste_statut
+
+def get_liste_reduction():
+	with connection.cursor() as cursor:
+		cursor.execute("SELECT `statut`.`nom` FROM `statut`")
+		liste_tuple = cursor.fetchall()
+		liste_reduction = []
+		for k in liste_tuple:
+			liste_reduction.append(k[0])
+		return liste_reduction
+
 def token_generator(size=200, chars=string.ascii_lowercase + string.ascii_uppercase + string.digits):
 	return ''.join(random.choice(chars) for _ in range(size))
 # Create your views here.
 
 def render(request, html, dico = {}):
+	print(connection.queries)
 	for k in connection.queries:
 		file = open('requete.sql','a')
 		file.write(k['sql']+'\n')
@@ -32,8 +60,7 @@ class Onglet:
 		self.connecter = connecter
 
 def accueil(request):
-	liste_gare = Gare.objects.values_list('nom', flat = True)
-	connection.queries
+	liste_gare = get_liste_gare()
 	dico = {
 		'onglet':Onglet(False,False,False),
 		'liste_gare':liste_gare,
@@ -41,94 +68,107 @@ def accueil(request):
 	return render(request, "accueil.html", dico)
 
 def rechercher_trajet(request):
-	erreur = False
-	message = ''
-	gare_depart = ''
-	gare_arrivee = ''
-	date = ''
-	if request.method == 'POST':
-		form = request.POST
-		gare_depart = form['gare_depart']
-		gare_arrivee = form['gare_arrivee']
-		date = form['date']
-		if Gare.objects.filter(nom = gare_depart).exists() == False :
-			erreur = True
-			message = "La gare de départ sélectionnée n'existe pas"
-		elif Gare.objects.filter(nom = gare_arrivee).exists() == False :
-			erreur = True
-			message = "La gare d'arrivée sélectionnée n'existe pas"
-		elif gare_arrivee == gare_depart:
-			erreur = True
-			message = "Merci de sélectionner deux gares différentes"
-		elif form['modifier'] == '0':
-			print('test')
-			gare_depart = Gare.objects.filter(nom = gare_depart).get()
-			gare_arrivee = Gare.objects.filter(nom = gare_arrivee).get()
-			date = datetime.strptime(form['date'], '%Y-%m-%d')
-			date_fin = date + timedelta(days=1, hours=0, minutes=0, seconds=0)
-			liste_train_depart = GareArret.objects.filter(heure__gte = date).filter(heure__lte = date_fin).filter(gare = gare_depart).values_list('train_id', flat = True)
-			liste_train = []
-			for train in liste_train_depart:
-				liste_gare = GareArret.objects.filter(train_id = train)
-				if liste_gare.filter(gare = gare_depart).get().numero < liste_gare.filter(gare = gare_arrivee).get().numero:
-					liste_train.append(Train.objects.get(id = train))
-			requete = Requete(gare_depart.nom, gare_arrivee.nom, date)
-			liste_resultat = []
-			for train in liste_train:
-				numero = train.id
-				print(type(gare_depart))
-				gare_arret_depart = GareArret.objects.filter(train_id = train).filter(gare_id = gare_depart.id).get()
-				gare_arret_arrivee = GareArret.objects.filter(train_id = train).filter(gare = gare_arrivee).get()
-				billet_dispo = Billet.objects.filter(place__voiture__train=train).filter(gare_depart__numero__lte = gare_arret_arrivee.numero-1).filter(gare_arrivee__numero__gte = gare_arret_depart.numero+1)
-				nb_place = Place.objects.filter(voiture__train = train).count() - billet_dispo.count()
-				gare_depart_str = gare_arret_depart.gare.nom
-				gare_arrivee_str = gare_arret_arrivee.gare.nom
-				date_depart = gare_arret_depart.heure.strftime('%d/%m/%Y')
-				date_arrivee = gare_arret_arrivee.heure.strftime('%d/%m/%Y')
-				heure_depart = gare_arret_depart.heure.strftime('%H:%M')
-				heure_arrivee = gare_arret_arrivee.heure.strftime('%H:%M')
-				prix = random.randint(80,100)
-				liste_resultat.append(Resultat_train(
-						numero,
-						gare_depart_str,
-						gare_arrivee_str,
-						date_depart,
-						date_arrivee,
-						heure_depart,
-						heure_arrivee,
-						nb_place,
-						prix,
-						gare_arret_depart.id,
-						gare_arret_arrivee.id)
-				)
-
-			gare_depart = gare_depart.nom
-			gare_arrivee = gare_arrivee.nom
-			token = Token.objects.create(valeur = token_generator(), date_fin = datetime.now()+timedelta(days = 0, hours = 1, minutes = 0, seconds = 0)) 
-			dico = {
-				'token':token.valeur,
-				'gare_depart':gare_depart,
-				'gare_arrivee':gare_arrivee,
-				'date': date.strftime('%d/%m/%Y'),
-				'requete':requete,
-				'liste_train' : liste_resultat
-			}
-			return render(request, "resultat_recherche.html", dico)
-		elif form['modifier'] == '1':
-			gare_depart = form['gare_depart']
-			gare_arrivee = form['gare_arrivee']
+	with connection.cursor() as cursor:
+		message = ''
+		gare_depart = ''
+		gare_arrivee = ''
+		date = ''
+		if request.method == 'POST':
+			form = request.POST
+			gare_depart = form['gare_depart'].replace("\"","'")
+			gare_arrivee = form['gare_arrivee'].replace("\"","'")
 			date = form['date']
-		print(form)
-	liste_gare = Gare.objects.values_list('nom', flat = True)
-	dico = {
-		'onglet':Onglet(True,False,False),
-		'message':message,
-		'liste_gare':liste_gare,
-		'gare_depart':gare_depart,
-		'gare_arrivee':gare_arrivee,
-		'date':date,
-	}
-	return render(request, "rechercher_billet.html", dico)
+			cursor.execute("SELECT COUNT(id) FROM `gare` WHERE `gare`.`nom` = '"+gare_depart+"' LIMIT 1")
+			gare_depart_exists = cursor.fetchone()[0] == 1
+			cursor.execute("SELECT COUNT(id) FROM `gare` WHERE `gare`.`nom` = '"+gare_arrivee+"' LIMIT 1")
+			gare_arrivee_exists = cursor.fetchone()[0] == 1
+			if not gare_depart_exists :
+				message = "La gare de départ sélectionnée n'existe pas"
+			elif not gare_arrivee_exists :
+				message = "La gare d'arrivée sélectionnée n'existe pas"
+			elif gare_arrivee == gare_depart:
+				message = "Merci de sélectionner deux gares différentes"
+			elif form['modifier'] == '0':
+				cursor.execute("SELECT id FROM `gare` WHERE `gare`.`nom` = '"+gare_depart+"' LIMIT 1")
+				gare_depart_id = cursor.fetchone()[0]
+				cursor.execute("SELECT id FROM `gare` WHERE `gare`.`nom` = '"+gare_arrivee+"' LIMIT 1")
+				gare_arrivee_id = cursor.fetchone()[0]
+				
+				date = datetime.strptime(form['date'], '%Y-%m-%d')
+				date_fin = date + timedelta(days=1, hours=0, minutes=0, seconds=0)
+				cursor.execute("SELECT `gare_arret`.`train_id` FROM `gare_arret` WHERE (`gare_arret`.`heure` >= '"+date.strftime("%Y-%m-%d")+" 00:00:00' AND `gare_arret`.`heure` <= '"+date_fin.strftime("%Y-%m-%d")+" 00:00:00' AND `gare_arret`.`gare_id` = "+str(gare_depart_id)+")")
+				liste_train_depart_id = cursor.fetchall()
+				liste_train = []
+				for train in liste_train_depart_id:
+					train = train[0]
+					cursor.execute("SELECT `gare_arret`.`numero` FROM `gare_arret` WHERE (`gare_arret`.`train_id` = "+str(train)+" AND `gare_arret`.`gare_id` = "+str(gare_depart_id)+")")
+					numero_depart = cursor.fetchone()[0]
+					cursor.execute("SELECT `gare_arret`.`numero` FROM `gare_arret` WHERE (`gare_arret`.`train_id` = "+str(train)+" AND `gare_arret`.`gare_id` = "+str(gare_arrivee_id)+")")
+					numero_arrivee = cursor.fetchone()[0]
+					
+					if numero_depart < numero_arrivee:
+						liste_train.append(train)
+				requete = Requete(gare_depart, gare_arrivee, date)
+				liste_resultat = []
+				for train in liste_train:
+					numero = train
+					cursor.execute("SELECT `gare_arret`.`id`,`gare_arret`.`numero`,`gare_arret`.`heure` FROM `gare_arret` WHERE (`gare_arret`.`train_id` = "+str(train)+" AND `gare_arret`.`gare_id` = "+str(gare_depart_id)+")")
+					id_depart, numero_depart, heure_depart = cursor.fetchone()
+					
+					cursor.execute("SELECT `gare_arret`.`id`,`gare_arret`.`numero`,`gare_arret`.`heure` FROM `gare_arret` WHERE (`gare_arret`.`train_id` = "+str(train)+" AND `gare_arret`.`gare_id` = "+str(gare_arrivee_id)+")")
+					id_arrivee, numero_arrivee,heure_arrivee = cursor.fetchone()
+					
+					cursor.execute("SELECT COUNT(`place`.`id`) FROM `place` INNER JOIN `voiture` ON (`place`.`voiture_id` = `voiture`.`id`) WHERE `voiture`.`train_id` = "+str(train))
+					nb_place_total = cursor.fetchone()[0]
+					cursor.execute("SELECT COUNT(`billet`.`id`) FROM `billet` INNER JOIN `place` ON (`billet`.`place_id` = `place`.`id`) INNER JOIN `voiture` ON (`place`.`voiture_id` = `voiture`.`id`) INNER JOIN `gare_arret` ON (`billet`.`gare_depart_id` = `gare_arret`.`id`) INNER JOIN `gare_arret` GA ON (`billet`.`gare_arrivee_id` = GA.`id`) WHERE (`voiture`.`train_id` = "+str(train)+" AND `gare_arret`.`numero` <= "+str(numero_arrivee-1)+" AND GA.`numero` >= "+str(numero_depart+1)+")")
+					nb_billet_reserve = cursor.fetchone()[0]
+					nb_place = nb_place_total - nb_billet_reserve
+					date_depart = heure_depart.strftime('%d/%m/%Y')
+					date_arrivee = heure_arrivee.strftime('%d/%m/%Y')
+					heure_depart = heure_depart.strftime('%H:%M')
+					heure_arrivee = heure_arrivee.strftime('%H:%M')
+					prix = random.randint(80,100)
+					liste_resultat.append(Resultat_train(
+							numero,
+							gare_depart,
+							gare_arrivee,
+							date_depart,
+							date_arrivee,
+							heure_depart,
+							heure_arrivee,
+							nb_place,
+							prix,
+							id_depart,
+							id_arrivee)
+					)
+
+				date_fin = datetime.now()+timedelta(days = 0, hours = 1, minutes = 0, seconds = 0)
+				token = token_generator()
+				cursor.execute("INSERT INTO `network_token` (`valeur`, `date_fin`) VALUES ('"+token+"', '"+date_fin.strftime('%Y-%m-%d %H:%M:%S')+"')")
+				dico = {
+					'token':token,
+					'gare_depart':gare_depart,
+					'gare_arrivee':gare_arrivee,
+					'date': date.strftime('%d/%m/%Y'),
+					'requete':requete,
+					'liste_train' : liste_resultat
+				}
+				return render(request, "resultat_recherche.html", dico)
+			elif form['modifier'] == '1':
+				gare_depart = form['gare_depart']
+				gare_arrivee = form['gare_arrivee']
+				date = form['date']
+			
+		liste_gare = get_liste_gare()
+		dico = {
+			'onglet':Onglet(True,False,False),
+			'message':message,
+			'liste_gare':liste_gare,
+			'gare_depart':gare_depart,
+			'gare_arrivee':gare_arrivee,
+			'date':date,
+		}
+		return render(request, "rechercher_billet.html", dico)
 
 
 class Resultat_train:
@@ -183,7 +223,7 @@ def reserver_billet(request):
 	if request.method == 'POST':
 		form = request.POST
 		if not Token.objects.filter(valeur = form['token']).exists():
-			liste_gare = Gare.objects.values_list('nom', flat = True)
+			liste_gare = get_liste_gare()
 			return render(request, 'rechercher_billet.html', {'liste_gare':liste_gare, 'erreur':True, 'message':'Votre session de reservation a expirée'})
 		Token.objects.filter(valeur = form['token']).delete()	
 		train = Train.objects.get(id = int(form['train_id']))
@@ -272,42 +312,63 @@ class Element:
 		self.booleen = booleen
 
 def profil(request):
-	message = ""
-	if request.method == 'POST':
-		form = request.POST
-		user = request.user
-		client = Client.objects.filter(user = user).get()
-		client.reduction = Reduction.objects.filter(nom = form['reduction']).get()
-		client.statut = Statut.objects.filter(nom = form['statut']).get()
-		client.save()
-		user.first_name = form['first_name']
-		user.last_name = form['last_name']
-		if form['email'] != user.email :
-			if not User.objects.filter(email = form['email']).exists():
-				user.email = form['email']
-			else:
-				message = "Le mail "+form['email']+" est déjà utilisé par un autre utilisateur"
-		user.save()
-	client = Client.objects.filter(user = request.user).get()		
-	liste_reduction = Reduction.objects.values_list('nom', flat = True)
-	reduction = []
-	for element in liste_reduction:
-		reduction.append(Element(element, client.reduction.nom == element))
+	with connection.cursor() as cursor:
+		cursor.execute("SELECT `django_session`.`session_data` FROM `django_session` WHERE (`django_session`.`expire_date` > '"+datetime.now().strftime('%Y-%m-%d %H:%M:%s')+"' AND `django_session`.`session_key` = '"+request.session.session_key+"')")
+		session_data = cursor.fetchone()[0]
+		message = ""
+		user_id = request.session.decode(session_data)['_auth_user_id']
+		if request.method == 'POST':
+			form = request.POST
+			cursor.execute("SELECT `client`.`id` FROM `client` WHERE `client`.`user_id` = 1")
+			client_id = cursor.fetchone()[0]
+			cursor.execute("SELECT `reduction`.`id` FROM `reduction` WHERE `reduction`.`nom` = '"+form["reduction"]+"'" )
+			reduction_id = cursor.fetchone()[0]
+			cursor.execute("SELECT `statut`.`id` FROM `statut` WHERE `statut`.`nom` = '"+form['statut']+"'" )
+			statut_id = cursor.fetchone()[0]
+			cursor.execute("UPDATE `client` SET `reduction_id` = "+str(reduction_id)+", `statut_id` = "+str(statut_id)+" WHERE `client`.`id` = "+str(client_id))
+			cursor.execute("SELECT `auth_user`.`email` FROM `auth_user` WHERE `auth_user`.`id` = "+str(user_id))
+			user_email = cursor.fetchone()[0]
+			if form['email'] != user_email :
+				cursor.execute("SELECT COUNT(id) FROM `auth_user` WHERE `auth_user`.`nom` = '"+form['email']+"' LIMIT 1")
+				user_exists = cursor.fetchone()[0] == 1
+				if not user_exists:
+					user.email = form['email']
+					cursor.execute("UPDATE `auth_user` SET `username` = '"+form['email']+"', `first_name` = '"+form['first_name']+"', `last_name` = '"+form['last_name']+"', `email` = '"+form['email']+"' WHERE `auth_user`.`id` = "+str(user_id))
+				else:
+					message = "Le mail "+form['email']+" est déjà utilisé par un autre utilisateur"
+					cursor.execute("UPDATE `auth_user` SET `username` = '"+form['email']+"', `first_name` = '"+form['first_name']+"', `last_name` = '"+form['last_name']+"' WHERE `auth_user`.`id` = "+str(user_id))
+			
+		cursor.execute("SELECT `auth_user`.`first_name`, `auth_user`.`last_name`, `auth_user`.`email` FROM `auth_user` WHERE `auth_user`.`id` = "+str(user_id))
+		first_name, last_name, email = cursor.fetchone()
+		cursor.execute("SELECT `client`.`statut_id`,`client`.`reduction_id` FROM `client` WHERE `client`.`user_id` = "+str(user_id))
+		statut_id, reduction_id = cursor.fetchone()
+		cursor.execute("SELECT `statut`.`nom` FROM `statut` WHERE `statut`.`id` = "+str(statut_id))
+		client_statut = cursor.fetchone()[0]
+		cursor.execute("SELECT `reduction`.`nom` FROM `reduction` WHERE `reduction`.`id` = "+str(reduction_id))
+		client_reduction = cursor.fetchone()[0]
+		liste_reduction = get_liste_reduction()
+		reduction = []
+		for element in liste_reduction:
+			reduction.append(Element(element, client_reduction == element))
 	
-	liste_statut = Statut.objects.values_list('nom', flat = True)
-	statut = []
-	for element in liste_statut:
-		statut.append(Element(element, client.statut.nom == element))
+		liste_statut = get_liste_statut()
+		statut = []
+		for element in liste_statut:
+			statut.append(Element(element, client_statut == element))
 	
 	
-	dico = {
-		'message':message,
-		'liste_statut':statut,
-		'liste_reduction':reduction,
-		'client':client,
-		'onglet':Onglet(False,True,False),
-	}
-	return render(request, 'profil.html',dico)
+		dico = {
+			'message':message,
+			'nom':last_name,
+			'prenom':first_name,
+			'client_statut':client_statut,
+			'client_reduction':client_reduction,
+			'liste_statut':statut,
+			'liste_reduction':reduction,
+			'client_email':email,
+			'onglet':Onglet(False,True,False),
+		}
+		return render(request, 'profil.html',dico)
 
 
 
@@ -345,7 +406,7 @@ def reservation(request):
 	return render(request, 'reservation.html', dico)
 
 def admin_interface(request):
-	liste_gare = Gare.objects.values_list('nom', flat = True)
+	liste_gare = get_liste_gare()
 	liste_agence = Agence.objects.values_list('nom', flat=True)
 	message = ''
 	if request.method == 'POST':
@@ -380,7 +441,7 @@ def admin_interface(request):
 			train = Train.objects.create()
 			gare_arret = []
 			for i in range(len(liste_gare)):
-				gare_arret.append(GareArret(gare = gares[i], heure = datetimes[i], train = train, numero = i))
+				gare_arret.append(GareArret(gare = liste_gare[i], heure = datetimes[i], train = train, numero = i))
 			GareArret.objects.bulk_create(gare_arret)
 			liste_voitures = []
 			for i,voiture in enumerate(voitures):
@@ -439,7 +500,7 @@ def admin_recherche_billet(request):
 
 
 def admin_paiement(request):
-	liste_gare = Gare.objects.values_list('nom', flat = True)
+	liste_gare = get_liste_gare()
 	liste_agence = Agence.objects.values_list('nom', flat=True)
 	if request.method == 'POST':
 		form = request.POST
