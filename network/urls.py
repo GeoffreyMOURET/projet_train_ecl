@@ -24,5 +24,7 @@ urlpatterns = [
     path('admin', views.admin_interface, name = 'admin_interface'),
     path('admin_recherche_billet', views.admin_recherche_billet, name = 'admin_recherche_billet'),
     path('admin_paiement', views.admin_paiement, name = 'admin_paiement'),
+    path('admin_creer_gare', views.admin_creer_gare, name = 'admin_creer_gare'),
     
 ]
+

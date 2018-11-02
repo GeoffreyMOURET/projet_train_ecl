@@ -31,6 +31,15 @@ def get_liste_statut():
 			liste_statut.append(k[0])
 		return liste_statut
 
+def get_liste_ville():
+	with connection.cursor() as cursor:
+		cursor.execute("SELECT `ville`.`nom` FROM `ville`")
+		liste_tuple = cursor.fetchall()
+		liste_ville = []
+		for k in liste_tuple:
+			liste_ville.append(k[0])
+		return liste_ville
+
 def get_liste_reduction():
 	with connection.cursor() as cursor:
 		cursor.execute("SELECT `statut`.`nom` FROM `statut`")
@@ -40,12 +49,20 @@ def get_liste_reduction():
 			liste_reduction.append(k[0])
 		return liste_reduction
 
+def get_liste_agence():
+	with connection.cursor() as cursor:
+		cursor.execute("SELECT `agence`.`nom` FROM `agence`")
+		liste_tuple = cursor.fetchall()
+		liste_agence = []
+		for k in liste_tuple:
+			liste_agence.append(k[0])
+		return liste_agence
+
 def token_generator(size=200, chars=string.ascii_lowercase + string.ascii_uppercase + string.digits):
 	return ''.join(random.choice(chars) for _ in range(size))
 # Create your views here.
 
 def render(request, html, dico = {}):
-	print(connection.queries)
 	for k in connection.queries:
 		file = open('requete.sql','a')
 		file.write(k['sql']+'\n')
@@ -263,7 +280,21 @@ def reserver_billet(request):
 	return render(request, 'reserver_billet.html', dico)
 
 def connexion(request):
+	"""
+	This method is called when the user wants to login or create a new account.
+	
+	Parameters : 
+		- request : Django requires it. Contains all the data about the HTTP Request done.
+	---------
+	Return :
+		render(request, 'connexion.html',dico) 
+			where 
+		dico = {
+			'onglet': (an Onglet object) Use to overline the good tab in the page,
+		}
+	"""
 	if request.method == 'POST':
+		# Récupération du formulaire
 		form = request.POST
 		if form['type'] == 'connexion':
 			logout(request)
@@ -307,37 +338,82 @@ def connexion(request):
 
 
 class Element:
+	"""
+	A class used to store data. 
+	Each element contains a string (self.element) and a boolean (self.booleen) to know whether the element design the user or not.
+	"""
 	def __init__(self, element, booleen):
 		self.element = element
 		self.booleen = booleen
 
 def profil(request):
-	with connection.cursor() as cursor:
+	"""
+	This method is called when the profil page of an user is created
+	
+	Parameters : 
+		- request : Django requires it. Contains all the data about the HTTP Request done.
+	---------
+	Return :
+		render(request, 'profil.html',dico) 
+			where 
+		dico = {
+			'message': (str) An error message in case of error. Default value : ''
+			'nom': (str) The lastname of the user
+			'prenom': (str) The first name of the user
+			'client_statut': (str) The status of the user
+			'client_reduction': (str) The reduction of the user
+			'liste_statut': (list) The list of all existing status in the database
+			'liste_reduction': (list) The list of all existing reductions in the database
+			'client_email': (str) The email of the client,
+			'onglet': (an Onglet object) Use to overline the good tab in the page,
+		}
+	"""
+	with connection.cursor() as cursor: #Connexion a la base de donnees
+		######### Récupération du compte de l'utilisateur ###############
 		cursor.execute("SELECT `django_session`.`session_data` FROM `django_session` WHERE (`django_session`.`expire_date` > '"+datetime.now().strftime('%Y-%m-%d %H:%M:%s')+"' AND `django_session`.`session_key` = '"+request.session.session_key+"')")
 		session_data = cursor.fetchone()[0]
 		message = ""
 		user_id = request.session.decode(session_data)['_auth_user_id']
+		#################################################################
+		
 		if request.method == 'POST':
+			# Récupération du formulaire
 			form = request.POST
-			cursor.execute("SELECT `client`.`id` FROM `client` WHERE `client`.`user_id` = 1")
+			
+			# Récupération de l'id du client
+			cursor.execute("SELECT `client`.`id` FROM `client` WHERE `client`.`user_id` = "+str(user_id))
 			client_id = cursor.fetchone()[0]
+			
+			# Récupération de l'id de la réduction du formulaire
 			cursor.execute("SELECT `reduction`.`id` FROM `reduction` WHERE `reduction`.`nom` = '"+form["reduction"]+"'" )
 			reduction_id = cursor.fetchone()[0]
+			
+			# Récupération de l'id du statut du formulaire
 			cursor.execute("SELECT `statut`.`id` FROM `statut` WHERE `statut`.`nom` = '"+form['statut']+"'" )
 			statut_id = cursor.fetchone()[0]
+			
+			#Mise à jour de la table 'client'
 			cursor.execute("UPDATE `client` SET `reduction_id` = "+str(reduction_id)+", `statut_id` = "+str(statut_id)+" WHERE `client`.`id` = "+str(client_id))
+			
+			#Récupération de l'email de l'utilisateur
 			cursor.execute("SELECT `auth_user`.`email` FROM `auth_user` WHERE `auth_user`.`id` = "+str(user_id))
 			user_email = cursor.fetchone()[0]
+			
+			# Si l'email a été modifié...
 			if form['email'] != user_email :
 				cursor.execute("SELECT COUNT(id) FROM `auth_user` WHERE `auth_user`.`nom` = '"+form['email']+"' LIMIT 1")
 				user_exists = cursor.fetchone()[0] == 1
+				#... Et qu'un utilisateur ne possède pas déjà cet email...
 				if not user_exists:
+					# La modification est validée
 					user.email = form['email']
 					cursor.execute("UPDATE `auth_user` SET `username` = '"+form['email']+"', `first_name` = '"+form['first_name']+"', `last_name` = '"+form['last_name']+"', `email` = '"+form['email']+"' WHERE `auth_user`.`id` = "+str(user_id))
+				# Sinon, la modification de l'email est rejetée
 				else:
 					message = "Le mail "+form['email']+" est déjà utilisé par un autre utilisateur"
 					cursor.execute("UPDATE `auth_user` SET `username` = '"+form['email']+"', `first_name` = '"+form['first_name']+"', `last_name` = '"+form['last_name']+"' WHERE `auth_user`.`id` = "+str(user_id))
 			
+		# Récupération des informations concernant le profil de l'utilisateur
 		cursor.execute("SELECT `auth_user`.`first_name`, `auth_user`.`last_name`, `auth_user`.`email` FROM `auth_user` WHERE `auth_user`.`id` = "+str(user_id))
 		first_name, last_name, email = cursor.fetchone()
 		cursor.execute("SELECT `client`.`statut_id`,`client`.`reduction_id` FROM `client` WHERE `client`.`user_id` = "+str(user_id))
@@ -346,11 +422,14 @@ def profil(request):
 		client_statut = cursor.fetchone()[0]
 		cursor.execute("SELECT `reduction`.`nom` FROM `reduction` WHERE `reduction`.`id` = "+str(reduction_id))
 		client_reduction = cursor.fetchone()[0]
+		
+		# Récupération de la liste des réductions pour le template
 		liste_reduction = get_liste_reduction()
 		reduction = []
 		for element in liste_reduction:
 			reduction.append(Element(element, client_reduction == element))
 	
+		# Récupération de la liste des statuts pour le template
 		liste_statut = get_liste_statut()
 		statut = []
 		for element in liste_statut:
@@ -380,34 +459,78 @@ def deconnexion(request):
 
 
 def reservation(request):
-
-	client = Client.objects.filter(user = request.user).get()
-	liste_billets = Billet.objects.filter(client = client).order_by('-gare_depart__heure')
-	liste_reservation = []
-	for billet in liste_billets:
-		train = billet.place.voiture.train
-		place = billet.place
-		reservation = Reservation (
-			train.id,
-			billet.gare_depart.gare.nom,
-			billet.gare_arrivee.gare.nom,
-			billet.gare_depart.heure.strftime('%d/%m/%Y'),
-			billet.gare_arrivee.heure.strftime('%d/%m/%Y'),
-			billet.gare_depart.heure.strftime('%H:%M'),
-			billet.gare_arrivee.heure.strftime('%H:%M'),
-			100,
-			place.voiture.numero,
-			place.numero
-		)
-		liste_reservation.append(reservation)
-	dico = {
-		'liste_reservation':liste_reservation,
-	}
-	return render(request, 'reservation.html', dico)
+	"""
+	This method is called when all the bookings from a user
+	
+	Parameters : 
+		- request : Django requires it. Contains all the data about the HTTP Request done.
+	---------
+	Return :
+		render(request, 'reservation.html',dico) 
+			where 
+		dico = {
+			'liste_reservation' (list) A list of Reservation objects containing all the informations in order to create a reservation,
+		}
+	"""
+	with connection.cursor() as cursor: #Connexion a la base de donnees
+		######### Récupération du compte de l'utilisateur ###############
+		cursor.execute("SELECT `django_session`.`session_data` FROM `django_session` WHERE (`django_session`.`expire_date` > '"+datetime.now().strftime('%Y-%m-%d %H:%M:%s')+"' AND `django_session`.`session_key` = '"+request.session.session_key+"')")
+		session_data = cursor.fetchone()[0]
+		message = ""
+		user_id = request.session.decode(session_data)['_auth_user_id']
+		#################################################################
+		
+		# Récupération de l'id du client
+		cursor.execute("SELECT `client`.`id` FROM `client` WHERE `client`.`user_id` = "+str(user_id))
+		client_id = cursor.fetchone()[0]
+		
+		cursor.execute("SELECT `billet`.`id`, `billet`.`gare_depart_id`, `billet`.`gare_arrivee_id`, `billet`.`place_id`, `billet`.`client_id`, `billet`.`confirmation_id`, `billet`.`agence_id`, `billet`.`prix`, `billet`.`reduction_id` FROM `billet` LEFT OUTER JOIN `gare_arret` ON (`billet`.`gare_depart_id` = `gare_arret`.`id`) WHERE `billet`.`client_id` = "+str(client_id)+" ORDER BY `gare_arret`.`heure` DESC")
+		liste_billets_id = cursor.fetchall()
+		
+		liste_reservation = []
+		for billet in liste_billets_id:
+			billet_id, gare_depart_id, gare_arrivee_id, place_id, client_id, confirmation_id, agence_id, prix, reduction_id = billet
+			cursor.execute("SELECT `place`.`situation_id`, `place`.`voiture_id`, `place`.`numero` FROM `place` WHERE `place`.`id` = "+str(place_id))
+			situation_id, voiture_id, numero_place = cursor.fetchone()
+			
+			# Récupération de l'id du train et du numéro de la voiture
+			cursor.execute("SELECT `voiture`.`train_id`,`voiture`.`numero` FROM `voiture` WHERE `voiture`.`id` = "+str(voiture_id))
+			train_id,numero_voiture = cursor.fetchone()
+			
+			# Récupération de l'heure de départ et du nom de la gare de départ
+			cursor.execute("SELECT `gare_arret`.`gare_id`, `gare_arret`.`heure` FROM `gare_arret` WHERE `gare_arret`.`id` = "+str(gare_depart_id))
+			gare_depart_id, heure_depart = cursor.fetchone()
+			cursor.execute("SELECT `gare`.`nom` FROM `gare` WHERE `gare`.`id` = "+str(gare_depart_id))
+			gare_depart_nom = cursor.fetchone()[0]
+			
+			# Récupération de l'heure d'arrivée et du nom de la gare d'arrivée
+			cursor.execute("SELECT `gare_arret`.`gare_id`, `gare_arret`.`heure` FROM `gare_arret` WHERE `gare_arret`.`id` = "+str(gare_arrivee_id))
+			gare_arrivee_id, heure_arrivee = cursor.fetchone()
+			cursor.execute("SELECT `gare`.`nom` FROM `gare` WHERE `gare`.`id` = "+str(gare_arrivee_id))
+			gare_arrivee_nom = cursor.fetchone()[0]
+			
+			reservation = Reservation (
+				train_id,
+				gare_depart_nom,
+				gare_arrivee_nom,
+				heure_depart.strftime('%d/%m/%Y'),
+				heure_arrivee.strftime('%d/%m/%Y'),
+				heure_depart.strftime('%H:%M'),
+				heure_arrivee.strftime('%H:%M'),
+				100,
+				numero_voiture,
+				numero_place
+			)
+			liste_reservation.append(reservation)
+		dico = {
+			'liste_reservation':liste_reservation,
+		}
+		return render(request, 'reservation.html', dico)
 
 def admin_interface(request):
 	liste_gare = get_liste_gare()
 	liste_agence = Agence.objects.values_list('nom', flat=True)
+	liste_ville = get_liste_ville()
 	message = ''
 	if request.method == 'POST':
 		form = request.POST
@@ -434,7 +557,7 @@ def admin_interface(request):
 			dico = {
 				'message':message,
 				'liste_gare':liste_gare,
-		
+				'liste_ville':liste_ville,		
 			}
 			return render(request, 'admin.html', dico)
 		else:
@@ -444,12 +567,12 @@ def admin_interface(request):
 				gare_arret.append(GareArret(gare = liste_gare[i], heure = datetimes[i], train = train, numero = i))
 			GareArret.objects.bulk_create(gare_arret)
 			liste_voitures = []
-			for i,voiture in enumerate(voitures):
-				liste_voitures.append(Voiture(train = train, numero = i))
+			for i in range(len(voitures)):
+				liste_voitures.append(Voiture(train = train, numero = i+1))
 			Voiture.objects.bulk_create(liste_voitures)
 			liste_place = []
 			for i,nb_place in enumerate(voitures):
-				voiture = liste_voitures[i]
+				voiture = Voiture.objects.filter(train = train).filter(numero = i+1).get()
 				for j in range(int(nb_place)):
 					liste_place.append(Place(voiture = voiture,numero = j, situation_id = j%2+1))
 			Place.objects.bulk_create(liste_place)
@@ -458,7 +581,8 @@ def admin_interface(request):
 	dico = {
 		'message':message,
 		'liste_gare':liste_gare,
-		'liste_agence':liste_agence
+		'liste_agence':liste_agence,
+		'liste_ville':liste_ville,
 		
 	}
 	return render(request, 'admin.html', dico)
@@ -468,7 +592,6 @@ def admin_interface(request):
 def admin_recherche_billet(request):
 	if request.method == 'POST':
 		form = request.POST
-		print(form)
 		numero = int(form['numero_billet'])
 		if not Billet.objects.filter(id = numero).exists():
 			return JsonResponse({'message':'Le billet indiqué n\'existe pas'}, status = 500)
@@ -498,10 +621,37 @@ def admin_recherche_billet(request):
 		}
 		return JsonResponse(dico)
 
+def admin_creer_gare(request):
+	message_3 = ''
+	if request.method == 'POST':
+		form = request.POST
+		gare = form['gare']
+		ville = form['ville']
+		if Gare.objects.filter(nom = gare).exists():
+			message_3 = 'Cette gare existe deja, sa ville a été mise à jour'
+		else:
+			if Ville.objects.filter(nom = ville).exists():
+				ville_id = Ville.objects.filter(nom = ville).get().id
+			else:
+				ville_id = Ville.objects.create(nom = ville).id
+			Gare.objects.create(nom = gare, ville_id = ville_id)
+			message_3 = 'La gare a bien été créée'
+	liste_gare = get_liste_gare()
+	liste_agence = Agence.objects.values_list('nom', flat=True)
+	liste_ville = get_liste_ville()
+	dico = {
+		'message_3':message_3,
+		'liste_gare':liste_gare,
+		'liste_ville':liste_ville,
+		'liste_agence':liste_agence
+	}
+	return render(request, 'admin.html', dico)
+
 
 def admin_paiement(request):
 	liste_gare = get_liste_gare()
-	liste_agence = Agence.objects.values_list('nom', flat=True)
+	liste_agence = get_liste_agence()
+	liste_ville = get_liste_ville()
 	if request.method == 'POST':
 		form = request.POST
 		numero = form['numero']
@@ -515,12 +665,14 @@ def admin_paiement(request):
 		dico = {
 			'message_2': "Le paiement a bien été effectué",
 			'liste_gare':liste_gare,
-			'liste_agence':liste_agence
+			'liste_agence':liste_agence,
+			'liste_ville':liste_ville,
 		
 		}
 		return render(request, 'admin.html', dico)
 	dico = {
 		'liste_gare':liste_gare,
+		'liste_ville':liste_ville,
 		'liste_agence':liste_agence
 	}
 	return render(request, 'admin.html', dico)

@@ -24,16 +24,16 @@
 	
 	<p class = titre_cadre> Mon profil </p>
 	{% if message %} <p class = message> {{message}} </p> {%endif%} 
-	<p> Nom : <span id = last_name>{{user.last_name}}</span> <input type = text id = form_last_name name = last_name value = "{{user.last_name}}" placeholder = "Nom" style='display:none' required> </p>
-	<p> Prénom : <span id = first_name>{{user.first_name}}</span> <input type = text id = form_first_name name = first_name value = "{{user.first_name}}" placeholder = "Prénom" style='display:none' required> </p> 
-	<p> Statut : <span id = statut>{{client.statut.nom}} </span>
+	<p> Nom : <span id = last_name>{{nom}}</span> <input type = text id = form_last_name name = last_name value = "{{nom}}" placeholder = "Nom" style='display:none' required> </p>
+	<p> Prénom : <span id = first_name>{{prenom}}</span> <input type = text id = form_first_name name = first_name value = "{{prenom}}" placeholder = "Prénom" style='display:none' required> </p> 
+	<p> Statut : <span id = statut>{{client_statut}} </span>
 		<select style = "display:none" name = 'statut' id = form_statut>
 		  {%for statut in liste_statut %}
 		  <option value='{{statut.element}}' {% if statut.booleen %} selected {%endif%}>{{statut.element}}</option>
 		{%endfor%}
 		</select>	
 	 </p>
-	<p> Réduction : <span id = reduction>{{client.reduction.nom}} </span>
+	<p> Réduction : <span id = reduction>{{client_reduction}} </span>
 		<select id = form_reduction style = "display:none" name = 'reduction'>
 		{%for reduction in liste_reduction %}
 		  <option value='{{reduction.element}}' {% if reduction.booleen %} selected {%endif%}>{{reduction.element}}</option>

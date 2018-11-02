@@ -24,7 +24,7 @@
 	<form id = form action="{% url 'rechercher_billet' %}" method="post">
 	{% csrf_token %}
 	<p> Rechercher un train </p>
-	{% if erreur %}
+	{% if message %}
 	<p class = erreur> {{message}} </p>
 	{% endif %}
 	<datalist id="gare">

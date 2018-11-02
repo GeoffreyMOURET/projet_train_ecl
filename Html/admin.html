@@ -29,6 +29,11 @@
 			<option value="{{gare}}">
 		{% endfor %}
 		</datalist>
+	<datalist id="ville">
+		{% for ville in liste_ville%}
+			<option value="{{ville}}">
+		{% endfor %}
+		</datalist>
 	<datalist id="agence">
 		{% for agence in liste_agence%}
 			<option value="{{agence}}">
@@ -139,5 +144,34 @@
 
         <hr>
       </div> <!-- /container -->
+
+      </div> <!-- /container -->
+	
+		
+      <div class="container">
+	<div class = formulaire >
+	<form id = form_4 action="{% url 'admin_creer_gare' %}" method="post" >
+	{% csrf_token %}
+	
+	<p> Créer une nouvelle gare </p>
+	{% if message_3 %}
+	<p class = erreur> {{message_3}} </p>
+	{% endif %}
+	
+	<label for = 'gare'> Nom de la gare : 
+	<input id = "gare" type=text name="gare" list = gare autocomplete="off" required> </label>
+	<label for = 'ville'> Ville : 
+	<input id = ville type=text name="ville" list = ville autocomplete="off" required> </label>
+        <p><a class="btn btn-primary btn-lg" role="button" onclick="submit_4()" style='color:white'>Créer la gare</a></p>
+	
+	</form>
+
+	</div>
+
+
+
+        <hr>
+      </div> <!-- /container -->
+
 	
 {% endblock %}
