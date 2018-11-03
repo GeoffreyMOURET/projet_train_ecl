@@ -49,17 +49,17 @@
           <div class="col-md-4">
             <h2>Réserver un billet</h2>
             <p> La réservation de tous les billets de train ECL est possible grâce à ce site. Tous les trajets pris en charge par les trains ECL sont réservables.</p>
-            <p><a class="btn btn-secondary" href="#" role="button">Accéder à la réservation &raquo;</a></p>
+            <p><a class="btn btn-secondary" href="{% url 'rechercher_billet' %}" role="button">Accéder à la réservation &raquo;</a></p>
           </div>
           <div class="col-md-4">
             <h2>Consulter mes trajets</h2>
             <p> Si vous êtes connecté à votre espace personnalisé, vous pouvez alors accéder à tous les billets vous concernant. </p>
-            <p><a class="btn btn-secondary" href="#" role="button">Consulter mes trajets &raquo;</a></p>
+            <p><a class="btn btn-secondary" href="{% url 'reservation' %}" role="button">Consulter mes trajets &raquo;</a></p>
           </div>
           <div class="col-md-4">
             <h2>Se créer un compte</h2>
             <p>Si vous ne vous êtes pas encore créé d'espace personnalisé, vous pouvez le faire en cliquant sur le lien ci dessous. Vous devez posséder un espace client afin de réserver un billet de train.</p>
-            <p><a class="btn btn-secondary" href="#" role="button">Créer un compte &raquo;</a></p>
+            <p><a class="btn btn-secondary" href="{% url 'connexion' %}" role="button">Créer un compte &raquo;</a></p>
           </div>
         </div>
 

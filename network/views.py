@@ -7,59 +7,14 @@ from django.db import connection
 from django.db.models import Q
 
 from .models import *
+from .getter import *
 from datetime import datetime, timedelta
 
 
 import random
 import string
 
-def get_liste_gare():
-	with connection.cursor() as cursor:
-		cursor.execute("SELECT `gare`.`nom` FROM `gare`")
-		liste_tuple = cursor.fetchall()
-		liste_gare = []
-		for k in liste_tuple:
-			liste_gare.append(k[0])
-		return liste_gare
 
-def get_liste_statut():
-	with connection.cursor() as cursor:
-		cursor.execute("SELECT `statut`.`nom` FROM `statut`")
-		liste_tuple = cursor.fetchall()
-		liste_statut = []
-		for k in liste_tuple:
-			liste_statut.append(k[0])
-		return liste_statut
-
-def get_liste_ville():
-	with connection.cursor() as cursor:
-		cursor.execute("SELECT `ville`.`nom` FROM `ville`")
-		liste_tuple = cursor.fetchall()
-		liste_ville = []
-		for k in liste_tuple:
-			liste_ville.append(k[0])
-		return liste_ville
-
-def get_liste_reduction():
-	with connection.cursor() as cursor:
-		cursor.execute("SELECT `statut`.`nom` FROM `statut`")
-		liste_tuple = cursor.fetchall()
-		liste_reduction = []
-		for k in liste_tuple:
-			liste_reduction.append(k[0])
-		return liste_reduction
-
-def get_liste_agence():
-	with connection.cursor() as cursor:
-		cursor.execute("SELECT `agence`.`nom` FROM `agence`")
-		liste_tuple = cursor.fetchall()
-		liste_agence = []
-		for k in liste_tuple:
-			liste_agence.append(k[0])
-		return liste_agence
-
-def token_generator(size=200, chars=string.ascii_lowercase + string.ascii_uppercase + string.digits):
-	return ''.join(random.choice(chars) for _ in range(size))
 # Create your views here.
 
 def render(request, html, dico = {}):
@@ -223,7 +178,7 @@ def resultat_recherche(request):
 
 
 class Reservation:
-	def __init__(self,numero, gare_depart, gare_arrivee, date_depart, date_arrivee, heure_depart, heure_arrivee, prix, voiture, place):
+	def __init__(self,numero, gare_depart, gare_arrivee, date_depart, date_arrivee, heure_depart, heure_arrivee, prix, voiture, place, reference = ''):
 		self.numero = numero
 		self.gare_depart = gare_depart
 		self.gare_arrivee = gare_arrivee
@@ -234,6 +189,7 @@ class Reservation:
 		self.prix = prix
 		self.voiture = voiture
 		self.place = place
+		self.reference = reference
 
 
 def reserver_billet(request):
@@ -255,7 +211,7 @@ def reserver_billet(request):
 		gare_arret_arrivee = GareArret.objects.get(id = int(form['gare_arret_arrivee_id']))
 		liste_billet = Billet.objects.filter(place__voiture__train=train)
 		client = Client.objects.filter(user = request.user).get()
-		Billet.objects.create(
+		billet = Billet.objects.create(
 			place = place, 
 			client = client,
 			gare_depart = gare_arret_depart,
@@ -271,7 +227,8 @@ def reserver_billet(request):
 			gare_arret_arrivee.heure.strftime('%H:%M'),
 			100,
 			place.voiture.numero,
-			place.numero
+			place.numero,
+			billet.id
 		)
 		
 	dico = {
@@ -474,7 +431,7 @@ def reservation(request):
 	"""
 	with connection.cursor() as cursor: #Connexion a la base de donnees
 		######### Récupération du compte de l'utilisateur ###############
-		cursor.execute("SELECT `django_session`.`session_data` FROM `django_session` WHERE (`django_session`.`expire_date` > '"+datetime.now().strftime('%Y-%m-%d %H:%M:%s')+"' AND `django_session`.`session_key` = '"+request.session.session_key+"')")
+		cursor.execute("SELECT `django_session`.`session_data` FROM `django_session` WHERE (`django_session`.`expire_date` > '"+datetime.now().strftime('%Y-%m-%d %H:%M:%S')+"' AND `django_session`.`session_key` = '"+request.session.session_key+"')")
 		session_data = cursor.fetchone()[0]
 		message = ""
 		user_id = request.session.decode(session_data)['_auth_user_id']
@@ -519,7 +476,8 @@ def reservation(request):
 				heure_arrivee.strftime('%H:%M'),
 				100,
 				numero_voiture,
-				numero_place
+				numero_place,
+				billet_id
 			)
 			liste_reservation.append(reservation)
 		dico = {
@@ -528,124 +486,216 @@ def reservation(request):
 		return render(request, 'reservation.html', dico)
 
 def admin_interface(request):
-	liste_gare = get_liste_gare()
-	liste_agence = Agence.objects.values_list('nom', flat=True)
-	liste_ville = get_liste_ville()
-	message = ''
-	if request.method == 'POST':
-		form = request.POST
-		gares = form.getlist('gares')
-		liste_gare = []
-		dates = form.getlist('dates')
-		heures = form.getlist('heures')
-		voitures = form.getlist('voitures')
-		prix = form['prix']
-		for gare in gares:
-			if gare == '':
-				pass
-			elif not Gare.objects.filter(nom = gare).exists():
-				message = 'La gare "'+gare+'" n\'existe pas'
+	with connection.cursor() as cursor: #Connexion a la base de donnees
+		liste_gare = get_liste_gare()
+		liste_agence = get_liste_agence()
+		liste_ville = get_liste_ville()
+		message = ''
+		if request.method == 'POST':
+			# On récupère les informations du formulaire
+			form = request.POST
+			gares = form.getlist('gares')
+			liste_gare = []
+			dates = form.getlist('dates')
+			heures = form.getlist('heures')
+			voitures = form.getlist('voitures')
+			prix = form['prix']
+			for gare in gares:
+				# On regarde si la gare rentrée par l'utilisateur existe
+				gare = gare.replace('\'','\\\'')
+				cursor.execute("SELECT COUNT(id) FROM `gare` WHERE `gare`.`nom` = '"+gare+"' LIMIT 1")
+				gare_exists = cursor.fetchone()[0] == 1
+				# Si elle n'existe pas, on renvoit un message
+				if not gare_exists:
+					message = 'La gare "'+gare+'" n\'existe pas'
+				else:
+					# Sinon, on récupère son id
+					cursor.execute("SELECT `gare`.`id`,`gare`.`nom` FROM `gare` WHERE `gare`.`nom` = '"+str(gare)+"'")
+					gare_id = cursor.fetchone()[0]
+					# Et on ajoute l'id à la liste des gares			
+					liste_gare.append(gare_id)
+			# On transforme les dates en format datetime
+			datetimes = []
+			for i in range(len(dates)):
+				datetimes.append(datetime.strptime(dates[i]+' '+heures[i],'%Y-%m-%d %H:%M'))
+			# On vérifie qu'elles sont bien dans l'ordre chronologique
+			for i in range(len(datetimes)-1):
+				if datetimes[i]>datetimes[i+1]:
+					message = 'La liste des gares n\'a pas été rentrée dans l\'ordre chronologique' 
+			# S'il y a eu une erreur, le traitement s'arrete là et on renvoit le message
+			if message != '':
+				dico = {
+					'message':message,
+					'liste_gare':liste_gare,
+					'liste_ville':liste_ville,		
+				}
+				return render(request, 'admin.html', dico)
+			# Sinon, les informations ont été rentrées correctement
 			else:
-				liste_gare.append(Gare.objects.filter(nom = gare).get())
-		datetimes = []
-		for i in range(len(dates)):
-			datetimes.append(datetime.strptime(dates[i]+' '+heures[i],'%Y-%m-%d %H:%M'))
-		for i in range(len(datetimes)-1):
-			if datetimes[i]>datetimes[i+1]:
-				message = 'La liste des gares n\'a pas été rentrée dans l\'ordre chronologique' 
-		if message != '':
-			dico = {
-				'message':message,
-				'liste_gare':liste_gare,
-				'liste_ville':liste_ville,		
-			}
-			return render(request, 'admin.html', dico)
-		else:
-			train = Train.objects.create()
-			gare_arret = []
-			for i in range(len(liste_gare)):
-				gare_arret.append(GareArret(gare = liste_gare[i], heure = datetimes[i], train = train, numero = i))
-			GareArret.objects.bulk_create(gare_arret)
-			liste_voitures = []
-			for i in range(len(voitures)):
-				liste_voitures.append(Voiture(train = train, numero = i+1))
-			Voiture.objects.bulk_create(liste_voitures)
-			liste_place = []
-			for i,nb_place in enumerate(voitures):
-				voiture = Voiture.objects.filter(train = train).filter(numero = i+1).get()
-				for j in range(int(nb_place)):
-					liste_place.append(Place(voiture = voiture,numero = j, situation_id = j%2+1))
-			Place.objects.bulk_create(liste_place)
+				# On crée un nouveau train et on récupère son id
+				cursor.execute("INSERT INTO `train` (`id`) VALUES (DEFAULT)")
+				cursor.execute("SELECT LAST_INSERT_ID() FROM `train`")
+				train_id = cursor.fetchone()[0]
+				
+				# On crée toutes les gare_arret du formulaire
+				string_gare_arret = ''
+				for i in range(len(liste_gare)):
+					string_gare_arret+="("+str(liste_gare[i])+",'"+datetimes[i].strftime('%Y-%m-%d %H:%M:%S')+"',"+str(train_id)+","+str(i)+"),"
+				string_gare_arret = string_gare_arret[:-1]
+				cursor.execute("INSERT INTO `gare_arret` (`gare_id`, `heure`, `train_id`, `numero`) VALUES " +string_gare_arret)
+				
+				# On crée toutes les voitures du formulaire
+				string_liste_voitures = ''
+				for i in range(len(voitures)):
+					string_liste_voitures += "("+str(train_id)+","+str(i+1)+"),"
+				string_liste_voitures = string_liste_voitures[:-1]
+				cursor.execute("INSERT INTO `voiture` (`train_id`, `numero`) VALUES "+string_liste_voitures)
+				
+				# On crée toutes les places du formulaire
+				string_liste_place = ''
+				for i,nb_place in enumerate(voitures):
+					cursor.execute("SELECT `voiture`.`id` FROM `voiture` WHERE (`voiture`.`train_id` = "+str(train_id)+" AND `voiture`.`numero` = "+str(i+1)+")")
+					voiture_id = cursor.fetchone()[0]
+					for j in range(int(nb_place)):
+						string_liste_place += "("+str(voiture_id)+","+str(j)+","+str(j%2+1)+"),"
+				string_liste_place = string_liste_place[:-1]
+				cursor.execute("INSERT INTO `place` (`voiture_id`, `numero`, `situation_id`) VALUES "+string_liste_place)
+				message = 'Le train a bien été créé'
+		# On renvoit la page avec le cas échéant un message
+		dico = {
+			'message':message,
+			'liste_gare':liste_gare,
+			'liste_agence':liste_agence,
+			'liste_ville':liste_ville,
 		
-	print(request.POST)
-	dico = {
-		'message':message,
-		'liste_gare':liste_gare,
-		'liste_agence':liste_agence,
-		'liste_ville':liste_ville,
-		
-	}
-	return render(request, 'admin.html', dico)
+		}
+		return render(request, 'admin.html', dico)
 
 
 
 def admin_recherche_billet(request):
-	if request.method == 'POST':
-		form = request.POST
-		numero = int(form['numero_billet'])
-		if not Billet.objects.filter(id = numero).exists():
-			return JsonResponse({'message':'Le billet indiqué n\'existe pas'}, status = 500)
-		if not Agence.objects.filter(nom = form['agence']).exists():
-			return JsonResponse({'message':'L\'agence indiquée n\'existe pas'}, status = 500)
-		agence = Agence.objects.filter(nom = form['agence']).get().nom
-		billet =  Billet.objects.get(id = numero)
-		if billet.confirmation == None:
-			validation = 0
-		else:
-			validation = billet.confirmation.validation
-		dico = {
-			'numero_billet' : billet.id,
-			'numero' : billet.place.voiture.train.id,
-			'gare_depart' : billet.gare_depart.gare.nom,
-			'gare_arrivee' : billet.gare_arrivee.gare.nom,
-			'date_depart' : billet.gare_depart.heure.strftime('%d/%m/%Y'),
-			'date_arrivee' : billet.gare_arrivee.heure.strftime('%d/%m/%Y'),
-			'heure_depart' : billet.gare_depart.heure.strftime('%H:%M'),
-			'heure_arrivee' : billet.gare_arrivee.heure.strftime('%H:%M'),
-			'prix' : billet.prix,
-			'reduction':billet.reduction.nom,
-			'voiture' : billet.place.voiture.numero,
-			'place' : billet.place.numero,
-			'payee' : validation,
-			'agence' : agence,
-		}
-		return JsonResponse(dico)
+	with connection.cursor() as cursor: #Connexion a la base de donnees
+		if request.method == 'POST':
+			#On récupère le numéro du billet du formulaire
+			form = request.POST
+			numero = int(form['numero_billet'])
+			# On regarde si le billet existe
+			cursor.execute("SELECT COUNT(id) FROM `billet` WHERE `billet`.`id` = "+str(numero))
+			billet_exists = cursor.fetchone()[0] == 1
+			if not billet_exists:
+				return JsonResponse({'message':'Le billet indiqué n\'existe pas'}, status = 500)
+			cursor.execute("SELECT COUNT(id) FROM `agence` WHERE `agence`.`nom` = '"+form['agence'].replace('\'','\\\'')+"'")
+			agence_exists = cursor.fetchone()[0] == 1
+			if not agence_exists:
+				return JsonResponse({'message':'L\'agence indiquée n\'existe pas'}, status = 500)
+			billet =  Billet.objects.get(id = numero)
+			cursor.execute("SELECT `billet`.`gare_depart_id`, `billet`.`gare_arrivee_id`, `billet`.`place_id`, `billet`.`client_id`, `billet`.`confirmation_id`, `billet`.`agence_id`, `billet`.`prix`, `billet`.`reduction_id` FROM `billet` WHERE `billet`.`id` = "+str(numero))
+			gare_depart_id, gare_arrivee_id, place_id, client_id, confirmation_id, agence_id, prix, reduction_id = cursor.fetchone()
+			
+			cursor.execute("SELECT `place`.`situation_id`, `place`.`voiture_id`, `place`.`numero` FROM `place` WHERE `place`.`id` = "+str(place_id))
+			situation_id, voiture_id, numero_place = cursor.fetchone()
+			
+			cursor.execute("SELECT `voiture`.`train_id`, `voiture`.`numero` FROM `voiture` WHERE `voiture`.`id` = "+str(voiture_id))
+			train_id, numero_voiture = cursor.fetchone()
+			
+			cursor.execute("SELECT `gare_arret`.`numero`, `gare_arret`.`gare_id`, `gare_arret`.`heure` FROM `gare_arret` WHERE `gare_arret`.`id` = "+str(gare_depart_id))
+			numero_depart, gare_id_depart, heure_depart = cursor.fetchone()
+			
+			cursor.execute("SELECT `gare_arret`.`numero`, `gare_arret`.`gare_id`, `gare_arret`.`heure` FROM `gare_arret` WHERE `gare_arret`.`id` = "+str(gare_arrivee_id))
+			numero_arrivee, gare_id_arrivee, heure_arrivee = cursor.fetchone()
+			
+			cursor.execute("SELECT `gare`.`nom` FROM `gare` WHERE `gare`.`id` = "+str(gare_id_depart))
+			nom_gare_depart = cursor.fetchone()[0]
+			
+			cursor.execute("SELECT `gare`.`nom` FROM `gare` WHERE `gare`.`id` = "+str(gare_id_arrivee))
+			nom_gare_arrivee = cursor.fetchone()[0]
+			
+			cursor.execute("SELECT `reduction`.`nom` FROM `reduction` WHERE `reduction`.`id` = "+str(reduction_id))
+			nom_reduction = cursor.fetchone()[0]
+			
+			if confirmation_id == None:
+				validation = 0
+			else:
+				cursor.execute("SELECT `confirmation`.`validation` FROM `confirmation` WHERE `confirmation`.`id` = "+str(confirmation_id))
+				validation = cursor.fetchone()[0]
+			dico = {
+				'numero_billet' : numero,
+				'numero' : train_id,
+				'gare_depart' : nom_gare_depart,
+				'gare_arrivee' : nom_gare_arrivee,
+				'date_depart' : heure_depart.strftime('%d/%m/%Y'),
+				'date_arrivee' : heure_arrivee.strftime('%d/%m/%Y'),
+				'heure_depart' : heure_depart.strftime('%H:%M'),
+				'heure_arrivee' : heure_arrivee.strftime('%H:%M'),
+				'prix' : prix,
+				'reduction': nom_reduction,
+				'voiture' : numero_voiture,
+				'place' : numero_place,
+				'payee' : validation,
+				'agence' : form['agence'],
+			}
+			for k in connection.queries:
+				file = open('requete.sql','a')
+				file.write(k['sql']+'\n')
+				file.close()
+			return JsonResponse(dico)
 
 def admin_creer_gare(request):
-	message_3 = ''
-	if request.method == 'POST':
-		form = request.POST
-		gare = form['gare']
-		ville = form['ville']
-		if Gare.objects.filter(nom = gare).exists():
-			message_3 = 'Cette gare existe deja, sa ville a été mise à jour'
-		else:
-			if Ville.objects.filter(nom = ville).exists():
-				ville_id = Ville.objects.filter(nom = ville).get().id
+	"""
+	This method is called when a form in order to create a train station and city is called
+	
+	Parameters : 
+		- request : Django requires it. Contains all the data about the HTTP Request done.
+	---------
+	Return :
+		render(request, 'admin.html',dico) 
+			where 
+		dico = {
+			'message_3': (str) A message to display for the user
+			'liste_gare': (list of str) The list of all the train stations in the database
+			'liste_ville': (list of str) The list of all the city in the database
+			'liste_agence': (list of str) The list of all the agency in the database
+		}
+	"""
+	with connection.cursor() as cursor: #Connexion a la base de donnees
+		message_3 = ''
+		if request.method == 'POST':
+			form = request.POST
+			gare = form['gare']
+			ville = form['ville']
+			# On regarde si la gare rentrée par l'utilisateur existe
+			gare = gare.replace('\'','\\\'')
+			cursor.execute("SELECT COUNT(id) FROM `gare` WHERE `gare`.`nom` = '"+gare+"' LIMIT 1")
+			gare_exists = cursor.fetchone()[0] == 1
+			if gare_exists:
+				message_3 = 'Cette gare existe deja, sa ville a été mise à jour'
 			else:
-				ville_id = Ville.objects.create(nom = ville).id
-			Gare.objects.create(nom = gare, ville_id = ville_id)
-			message_3 = 'La gare a bien été créée'
-	liste_gare = get_liste_gare()
-	liste_agence = Agence.objects.values_list('nom', flat=True)
-	liste_ville = get_liste_ville()
-	dico = {
-		'message_3':message_3,
-		'liste_gare':liste_gare,
-		'liste_ville':liste_ville,
-		'liste_agence':liste_agence
-	}
-	return render(request, 'admin.html', dico)
+				# On regarde si la ville rentrée par l'utilisateur existe
+				ville = ville.replace('\'','\\\'')
+				cursor.execute("SELECT COUNT(id) FROM `ville` WHERE `ville`.`nom` = '"+ville+"' LIMIT 1")
+				ville_exists = cursor.fetchone()[0] == 1
+				if ville_exists:
+					# On récupère son id
+					cursor.execute("SELECT `ville`.`id` FROM `ville` WHERE `ville`.`nom` = '"+ville+"' LIMIT 1")
+					ville_id = cursor.fetchone()[0]
+				else:
+					# On la crée la ville si elle n'existe pas
+					cursor.execute("INSERT INTO `ville` (`nom`) VALUES ('"+ville+"')")
+					# On récupère son id
+					cursor.execute("SELECT LAST_INSERT_ID() FROM `ville`")
+					ville_id = cursor.fetchone()[0]
+				cursor.execute("INSERT INTO `gare` (`nom`,`ville_id`) VALUES ('"+gare+"',"+str(ville_id)+")")
+				message_3 = 'La gare a bien été créée'
+		liste_gare = get_liste_gare()
+		liste_agence = get_liste_agence()
+		liste_ville = get_liste_ville()
+		dico = {
+			'message_3':message_3,
+			'liste_gare':liste_gare,
+			'liste_ville':liste_ville,
+			'liste_agence':liste_agence
+		}
+		return render(request, 'admin.html', dico)
 
 
 def admin_paiement(request):

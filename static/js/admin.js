@@ -78,6 +78,10 @@ function submit_2() {
 
             timeout: 3000,
 
+            error: function (data) {
+	        alert(data.responseJSON['message']);
+	    },
+
             success: function(data){
 		$('.erreur').hide();
 		$('#apercu').show();
@@ -119,6 +123,10 @@ function submit_2() {
 
 function submit_3() {
 $('#form_3')[0].submit()
+}
+
+function submit_4() {
+$('#form_4')[0].submit()
 }
 
 

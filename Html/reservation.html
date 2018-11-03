@@ -24,7 +24,7 @@
 	{% for reservation in liste_reservation %}
 	<div class = train>
 		
-		<p class = titre_train> Train n° <span>{{reservation.numero}}</span> au départ de <span> {{reservation.gare_depart}} </span> le <span> {{reservation.date_depart}} </span> à <span> {{reservation.heure_depart}} </span> </p>
+		<p class = titre_train> Billet n° <span>{{reservation.reference}}</span> du train n° <span>{{reservation.numero}}</span> au départ de <span> {{reservation.gare_depart}} </span> le <span> {{reservation.date_depart}} </span> à <span> {{reservation.heure_depart}} </span> </p>
 		<p class = contenu> 
 		 Gare de départ : <span> {{reservation.gare_depart}} </span> le <span> {{reservation.date_depart}} </span> à <span> {{reservation.heure_depart}} </span>
 		</p>

@@ -25,7 +25,7 @@ SECRET_KEY = 'aacgdjlormupdr3_c3hlw$o=6-t(99txs%eo%8sbtpvrn4tbv3'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['projettrainecl.pythonanywhere.com']
+ALLOWED_HOSTS = []
 
 
 # Application definition
@@ -81,10 +81,10 @@ DATABASES = {
 
     'default': {
         'ENGINE': 'django.db.backends.mysql',   # Backends disponibles : 'postgresql', 'mysql', 'sqlite3' et 'oracle'.
-        'NAME': 'projettrainecl$projet',             # Nom de la base de données
-        'USER': 'projettrainecl',
-        'PASSWORD': 'geoffrey',        
-        'HOST': 'projettrainecl.mysql.pythonanywhere-services.com',                    # Utile si votre base de données est sur une autre machine
+        'NAME': 'projet',             # Nom de la base de données
+        'USER': 'root',
+        'PASSWORD': 'toor',        
+        'HOST': '127.0.0.1',                    # Utile si votre base de données est sur une autre machine
         'PORT': '3306',                         # ... et si elle utilise un autre port que celui par défaut
     }
 
