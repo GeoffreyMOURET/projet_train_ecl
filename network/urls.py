@@ -15,7 +15,6 @@ urlpatterns = [
     path('accueil', views.accueil, name = 'accueil'),
     path('rechercher_trajet', views.rechercher_trajet, name = 'rechercher_billet'),
     path('init_base', views.init_base, name = 'init_base'),
-    path('resultat_recherche', views.resultat_recherche, name = 'resultat_recherche'),
     path('connexion', views.connexion, name = 'connexion'),
     path('profil', views.profil, name = 'profil'),
     path('reserver_billet', views.reserver_billet, name = 'reserver_billet'),

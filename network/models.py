@@ -44,7 +44,7 @@ class Client(models.Model):
 
 class Confirmation(models.Model):
     heure_fin = models.DateTimeField(blank=True, null=True)
-    validation = models.IntegerField(blank=True, null=True)
+    validation = models.PositiveSmallIntegerField(blank=True, null=True)
 
     class Meta:
         managed = True
@@ -108,6 +108,10 @@ class Statut(models.Model):
 class Token(models.Model):
     valeur = models.CharField(max_length = 200, blank = True, null = True)
     date_fin = models.DateTimeField(blank = True, null=True)
+    class Meta:
+        managed = True
+        db_table = 'token'
+
 class Train(models.Model):
     class Meta:
         managed = True

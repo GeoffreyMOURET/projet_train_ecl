@@ -5,6 +5,7 @@ from django.contrib.auth.models import User
 from django.urls import reverse
 from django.db import connection
 from django.db.models import Q
+from django.contrib.auth.hashers import make_password #Hachage des mots de passe
 
 from .models import *
 from .getter import *
@@ -116,7 +117,7 @@ def rechercher_trajet(request):
 
 				date_fin = datetime.now()+timedelta(days = 0, hours = 1, minutes = 0, seconds = 0)
 				token = token_generator()
-				cursor.execute("INSERT INTO `network_token` (`valeur`, `date_fin`) VALUES ('"+token+"', '"+date_fin.strftime('%Y-%m-%d %H:%M:%S')+"')")
+				cursor.execute("INSERT INTO `token` (`valeur`, `date_fin`) VALUES ('"+token+"', '"+date_fin.strftime('%Y-%m-%d %H:%M:%S')+"')")
 				dico = {
 					'token':token,
 					'gare_depart':gare_depart,
@@ -165,15 +166,6 @@ class Requete:
 		self.date = date.strftime('%Y-%m-%d')
 		
 		
-		
-def resultat_recherche(request):
-	liste_train = []
-	for k in range(10):
-		liste_train.append(Resultat_train('011001','Paris','Lyon','02/10/2018', '02/10/2018', '20h10', '22h10', '30', '200'))
-	dico = {
-		'liste_train' : liste_train
-	}
-	return render(request, "resultat_recherche.html", dico)
 
 
 
@@ -193,48 +185,102 @@ class Reservation:
 
 
 def reserver_billet(request):
-	if request.method == 'POST':
-		form = request.POST
-		if not Token.objects.filter(valeur = form['token']).exists():
-			liste_gare = get_liste_gare()
-			return render(request, 'rechercher_billet.html', {'liste_gare':liste_gare, 'erreur':True, 'message':'Votre session de reservation a expirée'})
-		Token.objects.filter(valeur = form['token']).delete()	
-		train = Train.objects.get(id = int(form['train_id']))
-		liste_place = Place.objects.filter(voiture__train=train).filter(billet=None)
-		if not liste_place.exists():
-			pass
-		elif liste_place.filter(situation__nom = form['cote']).exists():
-			place = liste_place.filter(situation__nom = form['cote'])[0]
-		else:
-			place = liste_place[0]
-		gare_arret_depart = GareArret.objects.get(id = int(form['gare_arret_depart_id']))
-		gare_arret_arrivee = GareArret.objects.get(id = int(form['gare_arret_arrivee_id']))
-		liste_billet = Billet.objects.filter(place__voiture__train=train)
-		client = Client.objects.filter(user = request.user).get()
-		billet = Billet.objects.create(
-			place = place, 
-			client = client,
-			gare_depart = gare_arret_depart,
-			gare_arrivee = gare_arret_arrivee,
-			prix = 100)
-		reservation = Reservation (
-			train.id,
-			gare_arret_depart.gare.nom,
-			gare_arret_arrivee.gare.nom,
-			gare_arret_depart.heure.strftime('%d/%m/%Y'),
-			gare_arret_arrivee.heure.strftime('%d/%m/%Y'),
-			gare_arret_depart.heure.strftime('%H:%M'),
-			gare_arret_arrivee.heure.strftime('%H:%M'),
-			100,
-			place.voiture.numero,
-			place.numero,
-			billet.id
-		)
+	"""
+	This method is called when the user wants to login or create a new account.
+	
+	Parameters : 
+		- request : Django requires it. Contains all the data about the HTTP Request done.
+	---------
+	Return :
+		render(request, 'connexion.html',dico) 
+			where 
+		dico = {
+			'reservation': A Reservation object which contains all the information about the reservation made by the user
+		}
+	"""
+	with connection.cursor() as cursor:
+		if request.method == 'POST':
+			form = request.POST
+			# On vérifie que le token existe déjà
+			cursor.execute("SELECT COUNT(id) FROM `token` WHERE `token`.`valeur` = '"+form['token'].replace('\'','\\\'')+"' LIMIT 1")
+			token_exists = cursor.fetchone()[0] == 1
+			if not token_exists:
+				liste_gare = get_liste_gare()
+				return render(request, 'rechercher_billet.html', {'liste_gare':liste_gare, 'erreur':True, 'message':'Votre session de reservation a expirée'})
+			cursor.execute("DELETE FROM `token` WHERE `token`.`valeur` = '"+form['token'].replace('\'','\\\'')+"'")
+			train = Train.objects.get(id = int(form['train_id']))
+			train_id = form['train_id']
+			cursor.execute("SELECT `place`.`id` FROM `place` INNER JOIN `voiture` ON (`place`.`voiture_id` = `voiture`.`id`) LEFT OUTER JOIN `billet` ON (`place`.`id` = `billet`.`place_id`) WHERE (`voiture`.`train_id` = "+str(train_id)+" AND `billet`.`id` IS NULL) LIMIT 1")
+			liste_place = cursor.fetchone()
+			liste_place_exists = len(liste_place) == 1
+			if not liste_place_exists:
+				pass
+			else:
+				cursor.execute("SELECT `place`.`id` FROM `place` INNER JOIN `voiture` ON (`place`.`voiture_id` = `voiture`.`id`) LEFT OUTER JOIN `billet` ON (`place`.`id` = `billet`.`place_id`) INNER JOIN `situation` ON (`place`.`situation_id` = `situation`.`id`) WHERE (`voiture`.`train_id` = "+str(train_id)+" AND `billet`.`id` IS NULL AND `situation`.`nom` = '"+str(form['cote']).replace('\'','\\\'')+"') LIMIT 1")
+				liste_place_cote = cursor.fetchone()
+				if len(liste_place_cote) == 1:
+					place_id = liste_place_cote[0]
+				else:
+					place_id = liste_place[0]
+			gare_arret_depart_id = int(form['gare_arret_depart_id'])
+			gare_arret_arrivee_id = int(form['gare_arret_arrivee_id'])
+			
+			######### Récupération du compte de l'utilisateur ###############
+			cursor.execute("SELECT `django_session`.`session_data` FROM `django_session` WHERE (`django_session`.`expire_date` > '"+datetime.now().strftime('%Y-%m-%d %H:%M:%S')+"' AND `django_session`.`session_key` = '"+request.session.session_key+"')")
+			session_data = cursor.fetchone()[0]
+			user_id = request.session.decode(session_data)['_auth_user_id']
+			#################################################################
 		
-	dico = {
-		'reservation':reservation
-	}
-	return render(request, 'reserver_billet.html', dico)
+			# Récupération de l'id du client
+			cursor.execute("SELECT `client`.`id` FROM `client` WHERE `client`.`user_id` = "+str(user_id))
+			client_id = cursor.fetchone()[0]
+			
+			# Création de la confirmation
+			cursor.execute("INSERT INTO `confirmation` (`heure_fin`,`validation`) VALUES ('"+(datetime.now()+timedelta(days = 0, hours = 1, minutes = 0, seconds = 0)).strftime('%Y-%m-%d %H:%M:%S.%s')+"',0)")
+			cursor.execute("SELECT LAST_INSERT_ID() FROM `confirmation`")
+			confirmation_id = cursor.fetchone()[0]
+			
+			cursor.execute("INSERT INTO `billet` (`place_id`,`client_id`,`confirmation_id`,`gare_depart_id`,`gare_arrivee_id`,`prix`) VALUES ("+str(place_id)+","+str(client_id)+","+str(confirmation_id)+","+str(gare_arret_depart_id)+","+str(gare_arret_arrivee_id)+", 100.0)")
+			cursor.execute("SELECT LAST_INSERT_ID() FROM `billet`")
+			billet_id = cursor.fetchone()[0]
+			
+			cursor.execute("SELECT `place`.`situation_id`, `place`.`voiture_id`, `place`.`numero` FROM `place` WHERE `place`.`id` = "+str(place_id))
+			situation_id, voiture_id, numero_place = cursor.fetchone()
+			
+			# Récupération de l'id du train et du numéro de la voiture
+			cursor.execute("SELECT `voiture`.`train_id`,`voiture`.`numero` FROM `voiture` WHERE `voiture`.`id` = "+str(voiture_id))
+			train_id,numero_voiture = cursor.fetchone()
+			
+			# Récupération de l'heure de départ et du nom de la gare de départ
+			cursor.execute("SELECT `gare_arret`.`gare_id`, `gare_arret`.`heure` FROM `gare_arret` WHERE `gare_arret`.`id` = "+str(gare_arret_depart_id))
+			gare_depart_id, heure_depart = cursor.fetchone()
+			cursor.execute("SELECT `gare`.`nom` FROM `gare` WHERE `gare`.`id` = "+str(gare_depart_id))
+			gare_depart_nom = cursor.fetchone()[0]
+			
+			# Récupération de l'heure d'arrivée et du nom de la gare d'arrivée
+			cursor.execute("SELECT `gare_arret`.`gare_id`, `gare_arret`.`heure` FROM `gare_arret` WHERE `gare_arret`.`id` = "+str(gare_arret_arrivee_id))
+			gare_arrivee_id, heure_arrivee = cursor.fetchone()
+			cursor.execute("SELECT `gare`.`nom` FROM `gare` WHERE `gare`.`id` = "+str(gare_arrivee_id))
+			gare_arrivee_nom = cursor.fetchone()[0]
+			
+			reservation = Reservation (
+				train_id,
+				gare_depart_nom,
+				gare_arrivee_nom,
+				heure_depart.strftime('%d/%m/%Y'),
+				heure_arrivee.strftime('%d/%m/%Y'),
+				heure_depart.strftime('%H:%M'),
+				heure_arrivee.strftime('%H:%M'),
+				100,
+				numero_voiture,
+				numero_place,
+				billet_id
+			)
+		
+		dico = {
+			'reservation':reservation
+		}
+		return render(request, 'reserver_billet.html', dico)
 
 def connexion(request):
 	"""
@@ -250,48 +296,69 @@ def connexion(request):
 			'onglet': (an Onglet object) Use to overline the good tab in the page,
 		}
 	"""
-	if request.method == 'POST':
-		# Récupération du formulaire
-		form = request.POST
-		if form['type'] == 'connexion':
-			logout(request)
-			mail = form['mail']
-			password = form['password']
-			user = authenticate(request, username=mail, password=password)
-			if user is not None:
-				login(request,user)
-			else:
-				return render(request,'connexion.html', {'message' : 'Mot de passe incorrect ou utilisateur inexistant'})
-			if (request.GET!={}): #redirection si il manquait une authentification
-				return HttpResponseRedirect(request.GET['next'])
-			return HttpResponseRedirect(reverse('accueil'))
-		elif form['type'] == 'creer':
-			logout(request)
-			mail = form['mail']
-			password = form['password']
-			first_name = form['prenom']
-			last_name = form['nom']
-			if Statut.objects.filter(nom = form['statut']).exists():
-				statut = Statut.objects.filter(nom = form['statut']).get()
-			else:
-				statut = Statut.objects.filter(nom = 'adulte').get()
-			if User.objects.filter(email = mail).exists():
-				return render(request,'connexion.html', {'message' : 'Cet e-mail est déjà utilisé'})
-			user = User.objects.create_user(mail, mail, password)
-			user.first_name = first_name
-			user.last_name = last_name
-			user.save()
-			Client.objects.create(
-				user = user,
-				reduction = Reduction.objects.filter(nom = 'Aucune').get(),
-				statut = statut
-			)
-			login(request, user)
-	onglet = Onglet(False,False,True)
-	dico = {
-		'onglet':onglet,
-	}
-	return render(request, "connexion.html", dico)
+	with connection.cursor() as cursor:
+		if request.method == 'POST':
+			# Récupération du formulaire
+			form = request.POST
+			if form['type'] == 'connexion':
+				logout(request)
+				mail = form['mail'].replace('\'','\\\'')
+				password = form['password']
+				cursor.execute("SELECT `auth_user`.`password` FROM `auth_user` WHERE `auth_user`.`email` = '"+mail+"' LIMIT 1" )
+				password_base = cursor.fetchone()
+				
+				if len(password_base) == 0:
+					return render(request,'connexion.html', {'message' : 'Mot de passe incorrect ou utilisateur inexistant'})
+				password_base = password_base[0]
+				hasher = password_base.split('$')[0]
+				salt = password_base.split('$')[2]
+				password = make_password(password,salt,hasher)
+				
+				if password != password_base :
+					return render(request,'connexion.html', {'message' : 'Mot de passe incorrect ou utilisateur inexistant'})
+				cursor.execute("SELECT `auth_user`.`id` FROM `auth_user` WHERE `auth_user`.`email` = '"+mail+"' LIMIT 1" )
+				user_id = cursor.fetchone()[0]
+				login(request,User.objects.get(pk = user_id))
+				
+				if (request.GET!={}): #redirection si il manquait une authentification
+					return HttpResponseRedirect(request.GET['next'])
+				return HttpResponseRedirect(reverse('accueil'))
+			elif form['type'] == 'creer':
+				logout(request)
+				mail = form['mail'].replace('\'','\\\'')
+				password = form['password']
+				first_name = form['prenom'].replace('\'','\\\'')
+				last_name = form['nom'].replace('\'','\\\'')
+				
+				#On récupère l'id du statut entré par l'utilisateur
+				cursor.execute("SELECT `statut`.`id` FROM `statut` WHERE `statut`.`nom` = '"+form["statut"]+"' LIMIT 1" )
+				statut_id = cursor.fetchone()[0]
+				
+				# On récupère l'id de la réduction par défaut
+				cursor.execute("SELECT `reduction`.`id` FROM `reduction` WHERE `reduction`.`nom` = 'Aucune' LIMIT 1" )
+				reduction_id = cursor.fetchone()[0]
+				
+				# On vérifie que l'email n'existe déjà pas
+				cursor.execute("SELECT COUNT(id) FROM `auth_user` WHERE `auth_user`.`username` = '"+mail+"' LIMIT 1")
+				user_exists = cursor.fetchone()[0] == 1
+				#... Et qu'un utilisateur ne possède pas déjà cet email...
+				if user_exists:
+					return render(request,'connexion.html', {'message' : 'Cet e-mail est déjà utilisé'})
+				password = make_password(password,token_generator(12))
+				
+				cursor.execute("INSERT INTO `auth_user` (`username`,`first_name`,`last_name`,`email`,`password`,`is_superuser`,`is_staff`,`is_active`,`date_joined`) VALUES ('"+mail+"','"+first_name+"','"+last_name+"','"+mail+"','"+password+"',0,0,1,'"+datetime.now().strftime('%Y-%m-%d %H:%M:%S.%s')+"')")
+				cursor.execute("SELECT LAST_INSERT_ID() FROM `auth_user`")
+				user_id = cursor.fetchone()[0]
+
+				cursor.execute("INSERT INTO `client` (`user_id`,`reduction_id`,`statut_id`) VALUES ("+str(user_id)+","+str(reduction_id)+","+str(statut_id)+")")
+				
+				login(request, User.objects.get(pk = user_id))
+				return HttpResponseRedirect(reverse('accueil'))
+		onglet = Onglet(False,False,True)
+		dico = {
+			'onglet':onglet,
+		}
+		return render(request, "connexion.html", dico)
 
 
 class Element:
@@ -327,7 +394,7 @@ def profil(request):
 	"""
 	with connection.cursor() as cursor: #Connexion a la base de donnees
 		######### Récupération du compte de l'utilisateur ###############
-		cursor.execute("SELECT `django_session`.`session_data` FROM `django_session` WHERE (`django_session`.`expire_date` > '"+datetime.now().strftime('%Y-%m-%d %H:%M:%s')+"' AND `django_session`.`session_key` = '"+request.session.session_key+"')")
+		cursor.execute("SELECT `django_session`.`session_data` FROM `django_session` WHERE (`django_session`.`expire_date` > '"+datetime.now().strftime('%Y-%m-%d %H:%M:%S')+"' AND `django_session`.`session_key` = '"+request.session.session_key+"')")
 		session_data = cursor.fetchone()[0]
 		message = ""
 		user_id = request.session.decode(session_data)['_auth_user_id']
@@ -358,7 +425,7 @@ def profil(request):
 			
 			# Si l'email a été modifié...
 			if form['email'] != user_email :
-				cursor.execute("SELECT COUNT(id) FROM `auth_user` WHERE `auth_user`.`nom` = '"+form['email']+"' LIMIT 1")
+				cursor.execute("SELECT COUNT(id) FROM `auth_user` WHERE `auth_user`.`username` = '"+form['email']+"' LIMIT 1")
 				user_exists = cursor.fetchone()[0] == 1
 				#... Et qu'un utilisateur ne possède pas déjà cet email...
 				if not user_exists:
@@ -409,6 +476,15 @@ def profil(request):
 
 
 def deconnexion(request):
+	"""
+	This method is called when user wants to logout
+	
+	Parameters : 
+		- request : Django requires it. Contains all the data about the HTTP Request done.
+	---------
+	Return :
+		HttpResponseRedirect(reverse('connexion'))
+	"""
 	logout(request)
 	return HttpResponseRedirect(reverse('connexion'))
 
@@ -486,6 +562,23 @@ def reservation(request):
 		return render(request, 'reservation.html', dico)
 
 def admin_interface(request):
+	"""
+	This method is called to load the administrator interface
+	
+	Parameters : 
+		- request : Django requires it. Contains all the data about the HTTP Request done.
+	---------
+	Return :
+		render(request, 'admin.html', dico)
+			 
+		dico = {
+			'message': (str) an error message (default : '')
+			'liste_gare': (list of str) The list of all train stations contained in the database
+			'liste_agence': (list of str) The list of all agencies contained in the database
+			'liste_ville': (list of str) The list of all cities contained in the database
+		
+		}
+	"""
 	with connection.cursor() as cursor: #Connexion a la base de donnees
 		liste_gare = get_liste_gare()
 		liste_agence = get_liste_agence()
@@ -574,6 +667,32 @@ def admin_interface(request):
 
 
 def admin_recherche_billet(request):
+	"""
+	This method is called in order to search in the database the corresponding train reservation to display it for the administrator
+	
+	Parameters : 
+		- request : Django requires it. Contains all the data about the HTTP Request done.
+	---------
+	Return :
+		JsonResponse(dico)
+			 
+		dico = {
+				'numero_billet' : (int) The id of the ticket
+				'numero' : (int) The id of the train
+				'gare_depart' : (str) The name of the departure station,
+				'gare_arrivee' : (str) The name of the arrival station,
+				'date_depart' : (str) The date of the departure,
+				'date_arrivee' : (str) The date of the arrival,
+				'heure_depart' : (str) The time of the departure,
+				'heure_arrivee' : (str) The time of the arrival,
+				'prix' : (float) The price of the ticket,
+				'reduction': (str) The name of the reduction,
+				'voiture' : (int) The car number,
+				'place' : (int) The place number,
+				'payee' : (int) Values 1 if the ticket was paid,
+				'agence' : (str) The name of the agency,
+			}
+	"""
 	with connection.cursor() as cursor: #Connexion a la base de donnees
 		if request.method == 'POST':
 			#On récupère le numéro du billet du formulaire
@@ -588,7 +707,6 @@ def admin_recherche_billet(request):
 			agence_exists = cursor.fetchone()[0] == 1
 			if not agence_exists:
 				return JsonResponse({'message':'L\'agence indiquée n\'existe pas'}, status = 500)
-			billet =  Billet.objects.get(id = numero)
 			cursor.execute("SELECT `billet`.`gare_depart_id`, `billet`.`gare_arrivee_id`, `billet`.`place_id`, `billet`.`client_id`, `billet`.`confirmation_id`, `billet`.`agence_id`, `billet`.`prix`, `billet`.`reduction_id` FROM `billet` WHERE `billet`.`id` = "+str(numero))
 			gare_depart_id, gare_arrivee_id, place_id, client_id, confirmation_id, agence_id, prix, reduction_id = cursor.fetchone()
 			
@@ -699,33 +817,56 @@ def admin_creer_gare(request):
 
 
 def admin_paiement(request):
-	liste_gare = get_liste_gare()
-	liste_agence = get_liste_agence()
-	liste_ville = get_liste_ville()
-	if request.method == 'POST':
-		form = request.POST
-		numero = form['numero']
-		billet =  Billet.objects.get(id = numero)
-		if billet.confirmation == None:
-			billet.confirmation = Confirmation.objects.create(validation = 1)
-		else:
-			billet.confirmation.validation = 1
-		billet.save()
-
+	"""
+	This method is called when a form in order to create a train station and city is called
+	
+	Parameters : 
+		- request : Django requires it. Contains all the data about the HTTP Request done.
+	---------
+	Return :
+		render(request, 'admin.html', dico)
+			where 
 		dico = {
-			'message_2': "Le paiement a bien été effectué",
+				'message_2': (str) A message to display for the user
+				'liste_gare': (list of str) The list of all the train stations in the database
+				'liste_ville': (list of str) The list of all the city in the database
+				'liste_agence': (list of str) The list of all the agency in the database
+		}
+	"""
+	with connection.cursor() as cursor: #Connexion a la base de donnees
+		liste_gare = get_liste_gare()
+		liste_agence = get_liste_agence()
+		liste_ville = get_liste_ville()
+		if request.method == 'POST':
+			form = request.POST
+			numero = form['numero']
+			cursor.execute("SELECT `billet`.`confirmation_id` FROM `billet` WHERE `billet`.`id` ="+str(numero)+" LIMIT 1")
+			confirmation_id = cursor.fetchone()[0]
+			# Si jamais l'objet confirmation n'a pas déjà été créén on le crée
+			if confirmation_id == None:
+				cursor.execute("INSERT INTO `confirmation` (`heure_fin`,`validation`) VALUES ( NULL,1)")
+				# On récupère son id
+				cursor.execute("SELECT LAST_INSERT_ID() FROM `confirmation`")
+				confirmation_id = cursor.fetchone()[0]
+				cursor.execute("UPDATE `billet` SET `confirmation_id` = "+str(confirmation_id)+" WHERE `billet`.`id` = "+str(numero))
+				
+			else:
+				cursor.execute("UPDATE `confirmation` SET `validation` = 1 WHERE `confirmation`.`id` = "+str(confirmation_id))
+	
+			dico = {
+				'message_2': "Le paiement a bien été effectué",
+				'liste_gare':liste_gare,
+				'liste_agence':liste_agence,
+				'liste_ville':liste_ville,
+			
+			}
+			return render(request, 'admin.html', dico)
+		dico = {
 			'liste_gare':liste_gare,
-			'liste_agence':liste_agence,
 			'liste_ville':liste_ville,
-		
+			'liste_agence':liste_agence
 		}
 		return render(request, 'admin.html', dico)
-	dico = {
-		'liste_gare':liste_gare,
-		'liste_ville':liste_ville,
-		'liste_agence':liste_agence
-	}
-	return render(request, 'admin.html', dico)
 
 
 
