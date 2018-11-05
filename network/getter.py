@@ -121,7 +121,7 @@ def connexion_requise(function):
 			cursor.execute("SELECT `django_session`.`session_data` FROM `django_session` WHERE (`django_session`.`expire_date` > '"+datetime.now().strftime('%Y-%m-%d %H:%M:%S')+"' AND `django_session`.`session_key` = '"+request.session.session_key+"')")
 			session_data = cursor.fetchone()
 			if session_data is not None:
-				function(*args, **kwargs)
+				return function(*args, **kwargs)
 			else:
 				return HttpResponseRedirect(reverse('connexion')+'?next='+request.get_full_path())
 	return decorator
@@ -143,7 +143,7 @@ def admin_requis(function):
 				cursor.execute("SELECT `auth_user`.`is_superuser` FROM `auth_user` WHERE `auth_user`.`id` = "+str(user_id))
 				is_superuser = cursor.fetchone()[0] == 1
 				if is_superuser:
-					function(*args, **kwargs)
+					return function(*args, **kwargs)
 				else:
 					return HttpResponseRedirect(reverse('connexion')+'?next='+request.get_full_path())
 				
