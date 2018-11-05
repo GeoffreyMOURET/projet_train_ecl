@@ -18,8 +18,18 @@
 
 
 {%block content %}
-	
-      <div class="container">
+<div id = contenu>	
+<div id=container_menu>
+<ul id="menu_horizontal">
+<li><a onclick="changer_onglet(0)">Ajouter train</a></li>
+<li><a onclick="changer_onglet(1)">Valider billet</a></li>
+<li><a onclick="changer_onglet(2)">Ajouter gare</a></li>
+<li><a onclick="changer_onglet(3)">Ajouter admin</a></li>
+<li><a onclick="changer_onglet(4)">Retirer admin</a></li>
+</ul>
+</div>
+<div class = onglet>
+      <div id='ajouter_train' class="container" >
 	<div class = formulaire >
 	<form id = form action="{% url 'admin_interface' %}" method="post" >
 	{% csrf_token %}
@@ -77,11 +87,11 @@
 
 
         <hr>
-	
+</div>
 
       </div> <!-- /container -->
-	
-		
+<div class = onglet style='display:none'>	
+
       <div class="container">
 	<div class = formulaire >
 	<form id = form_2 action="{% url 'admin_recherche_billet' %}" method="post" >
@@ -144,11 +154,12 @@
 
         <hr>
       </div> <!-- /container -->
+</div> <!-- /onglet -->
 
-      </div> <!-- /container -->
-	
+
+<div class = onglet style='display:none'>	
 		
-      <div class="container">
+      <div id='ajouter_gare' class="container" >
 	<div class = formulaire >
 	<form id = form_4 action="{% url 'admin_creer_gare' %}" method="post" >
 	{% csrf_token %}
@@ -171,9 +182,11 @@
 
 
         <hr>
-      </div> <!-- /container -->
 
-      <div class="container">
+      </div> <!-- /container -->
+</div>
+<div class = onglet style='display:none'>
+      <div id = 'ajouter_admin' class="container" >
 	<div class = formulaire >
 	<form id = form_5 action="{% url 'admin_gestion' %}" method="post" >
 	{% csrf_token %}
@@ -195,8 +208,9 @@
 
         <hr>
       </div> <!-- /container -->
-	
-      <div class="container">
+</div>	
+<div class = onglet style='display:none'>
+      <div id='retirer_admin' class="container" >
 	<div class = formulaire >
 	<form id = form_6 action="{% url 'admin_gestion' %}" method="post" >
 	{% csrf_token %}
@@ -218,6 +232,9 @@
 
         <hr>
       </div> <!-- /container -->
+</div>
 
+
+</div>
 	
 {% endblock %}

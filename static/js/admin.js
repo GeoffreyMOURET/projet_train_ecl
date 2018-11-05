@@ -137,5 +137,22 @@ function submit_6() {
 $('#form_6')[0].submit()
 }
 
+function changer_onglet(j) {
+liste_onglet = $('.onglet');
+for (i = 0; i < liste_onglet.length; i++) {
+	onglet = liste_onglet[i];
+	if (i == j) {
+		$(onglet).hide(200,complete = on_complete);
+	}
+	else {
+		$(onglet).hide(200);
+	}
+}
+function on_complete() {
+	console.log(liste_onglet[j]);
+	$(liste_onglet[j]).show(200);
+}
+}
+
 
 
