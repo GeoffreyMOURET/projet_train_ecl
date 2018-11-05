@@ -20,10 +20,14 @@ urlpatterns = [
     path('reserver_billet', views.reserver_billet, name = 'reserver_billet'),
     path('deconnexion', views.deconnexion, name = 'deconnexion'),
     path('reservation', views.reservation, name = 'reservation'),
+
+
+
     path('admin', views.admin_interface, name = 'admin_interface'),
     path('admin_recherche_billet', views.admin_recherche_billet, name = 'admin_recherche_billet'),
     path('admin_paiement', views.admin_paiement, name = 'admin_paiement'),
     path('admin_creer_gare', views.admin_creer_gare, name = 'admin_creer_gare'),
+    path('admin_gestion', views.admin_gestion, name = 'admin_gestion'),
     
 ]
 

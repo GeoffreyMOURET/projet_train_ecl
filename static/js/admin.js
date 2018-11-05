@@ -129,5 +129,13 @@ function submit_4() {
 $('#form_4')[0].submit()
 }
 
+function submit_5() {
+$('#form_5')[0].submit()
+}
+
+function submit_6() {
+$('#form_6')[0].submit()
+}
+
 
 

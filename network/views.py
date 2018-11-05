@@ -40,6 +40,7 @@ def accueil(request):
 	}
 	return render(request, "accueil.html", dico)
 
+@connexion_requise
 def rechercher_trajet(request):
 	with connection.cursor() as cursor:
 		message = ''
@@ -183,7 +184,7 @@ class Reservation:
 		self.place = place
 		self.reference = reference
 
-
+@connexion_requise
 def reserver_billet(request):
 	"""
 	This method is called when the user wants to login or create a new account.
@@ -212,13 +213,13 @@ def reserver_billet(request):
 			train_id = form['train_id']
 			cursor.execute("SELECT `place`.`id` FROM `place` INNER JOIN `voiture` ON (`place`.`voiture_id` = `voiture`.`id`) LEFT OUTER JOIN `billet` ON (`place`.`id` = `billet`.`place_id`) WHERE (`voiture`.`train_id` = "+str(train_id)+" AND `billet`.`id` IS NULL) LIMIT 1")
 			liste_place = cursor.fetchone()
-			liste_place_exists = len(liste_place) == 1
+			liste_place_exists = liste_place != None
 			if not liste_place_exists:
 				pass
 			else:
 				cursor.execute("SELECT `place`.`id` FROM `place` INNER JOIN `voiture` ON (`place`.`voiture_id` = `voiture`.`id`) LEFT OUTER JOIN `billet` ON (`place`.`id` = `billet`.`place_id`) INNER JOIN `situation` ON (`place`.`situation_id` = `situation`.`id`) WHERE (`voiture`.`train_id` = "+str(train_id)+" AND `billet`.`id` IS NULL AND `situation`.`nom` = '"+str(form['cote']).replace('\'','\\\'')+"') LIMIT 1")
 				liste_place_cote = cursor.fetchone()
-				if len(liste_place_cote) == 1:
+				if liste_place_cote != None:
 					place_id = liste_place_cote[0]
 				else:
 					place_id = liste_place[0]
@@ -307,7 +308,7 @@ def connexion(request):
 				cursor.execute("SELECT `auth_user`.`password` FROM `auth_user` WHERE `auth_user`.`email` = '"+mail+"' LIMIT 1" )
 				password_base = cursor.fetchone()
 				
-				if len(password_base) == 0:
+				if password_base == None:
 					return render(request,'connexion.html', {'message' : 'Mot de passe incorrect ou utilisateur inexistant'})
 				password_base = password_base[0]
 				hasher = password_base.split('$')[0]
@@ -354,9 +355,18 @@ def connexion(request):
 				
 				login(request, User.objects.get(pk = user_id))
 				return HttpResponseRedirect(reverse('accueil'))
+		if (request.GET!={}): 
+			if request.session.session_key == None:
+				message = 'Vous devez vous connecter pour accéder à cette page'
+			else:
+				message = "Vous n'avez pas les droits d'accéder à cette page"
+		else:
+			message = ''
+			
 		onglet = Onglet(False,False,True)
 		dico = {
 			'onglet':onglet,
+			'message':message
 		}
 		return render(request, "connexion.html", dico)
 
@@ -370,6 +380,7 @@ class Element:
 		self.element = element
 		self.booleen = booleen
 
+@connexion_requise
 def profil(request):
 	"""
 	This method is called when the profil page of an user is created
@@ -490,7 +501,7 @@ def deconnexion(request):
 
 
 
-
+@connexion_requise
 def reservation(request):
 	"""
 	This method is called when all the bookings from a user
@@ -560,7 +571,7 @@ def reservation(request):
 			'liste_reservation':liste_reservation,
 		}
 		return render(request, 'reservation.html', dico)
-
+@admin_requis
 def admin_interface(request):
 	"""
 	This method is called to load the administrator interface
@@ -617,12 +628,7 @@ def admin_interface(request):
 					message = 'La liste des gares n\'a pas été rentrée dans l\'ordre chronologique' 
 			# S'il y a eu une erreur, le traitement s'arrete là et on renvoit le message
 			if message != '':
-				dico = {
-					'message':message,
-					'liste_gare':liste_gare,
-					'liste_ville':liste_ville,		
-				}
-				return render(request, 'admin.html', dico)
+				return HttpResponseRedirect(reverse('admin_interface')+'?message='+message)
 			# Sinon, les informations ont été rentrées correctement
 			else:
 				# On crée un nouveau train et on récupère son id
@@ -654,18 +660,24 @@ def admin_interface(request):
 				string_liste_place = string_liste_place[:-1]
 				cursor.execute("INSERT INTO `place` (`voiture_id`, `numero`, `situation_id`) VALUES "+string_liste_place)
 				message = 'Le train a bien été créé'
-		# On renvoit la page avec le cas échéant un message
+				return HttpResponseRedirect(reverse('admin_interface')+'?message='+message)
 		dico = {
-			'message':message,
 			'liste_gare':liste_gare,
 			'liste_agence':liste_agence,
 			'liste_ville':liste_ville,
 		
 		}
+		if (request.GET!={}): #redirection si il manquait une authentification
+			nom_message = request.GET.keys()
+			for i in nom_message:
+				dico[i] = request.GET[i]
+			
+		# On renvoit la page avec le cas échéant un message
+		
 		return render(request, 'admin.html', dico)
 
 
-
+@admin_requis
 def admin_recherche_billet(request):
 	"""
 	This method is called in order to search in the database the corresponding train reservation to display it for the administrator
@@ -758,6 +770,7 @@ def admin_recherche_billet(request):
 				file.close()
 			return JsonResponse(dico)
 
+@admin_requis
 def admin_creer_gare(request):
 	"""
 	This method is called when a form in order to create a train station and city is called
@@ -804,18 +817,10 @@ def admin_creer_gare(request):
 					ville_id = cursor.fetchone()[0]
 				cursor.execute("INSERT INTO `gare` (`nom`,`ville_id`) VALUES ('"+gare+"',"+str(ville_id)+")")
 				message_3 = 'La gare a bien été créée'
-		liste_gare = get_liste_gare()
-		liste_agence = get_liste_agence()
-		liste_ville = get_liste_ville()
-		dico = {
-			'message_3':message_3,
-			'liste_gare':liste_gare,
-			'liste_ville':liste_ville,
-			'liste_agence':liste_agence
-		}
-		return render(request, 'admin.html', dico)
+				return HttpResponseRedirect(reverse('admin_interface')+'?message_3='+message_3)
+		return HttpResponseRedirect(reverse('admin_interface'))
 
-
+@admin_requis
 def admin_paiement(request):
 	"""
 	This method is called when a form in order to create a train station and city is called
@@ -824,14 +829,7 @@ def admin_paiement(request):
 		- request : Django requires it. Contains all the data about the HTTP Request done.
 	---------
 	Return :
-		render(request, 'admin.html', dico)
-			where 
-		dico = {
-				'message_2': (str) A message to display for the user
-				'liste_gare': (list of str) The list of all the train stations in the database
-				'liste_ville': (list of str) The list of all the city in the database
-				'liste_agence': (list of str) The list of all the agency in the database
-		}
+		HttpResponseRedirect(reverse('admin_interface'))
 	"""
 	with connection.cursor() as cursor: #Connexion a la base de donnees
 		liste_gare = get_liste_gare()
@@ -852,23 +850,43 @@ def admin_paiement(request):
 				
 			else:
 				cursor.execute("UPDATE `confirmation` SET `validation` = 1 WHERE `confirmation`.`id` = "+str(confirmation_id))
-	
-			dico = {
-				'message_2': "Le paiement a bien été effectué",
-				'liste_gare':liste_gare,
-				'liste_agence':liste_agence,
-				'liste_ville':liste_ville,
-			
-			}
-			return render(request, 'admin.html', dico)
-		dico = {
-			'liste_gare':liste_gare,
-			'liste_ville':liste_ville,
-			'liste_agence':liste_agence
-		}
-		return render(request, 'admin.html', dico)
+			message_2 = "Le paiement a bien été effectué"
+			return HttpResponseRedirect(reverse('admin_interface')+'?message_2='+message_2)
+		return HttpResponseRedirect(reverse('admin_interface'))
 
 
+@admin_requis
+def admin_gestion(request):
+	message_5 = ''
+	message_6 = ''
+	with connection.cursor() as cursor: #Connexion a la base de donnees
+		if request.method == 'POST':
+			form = request.POST
+			mail = form['mail'].replace("\"","'")
+			cursor.execute("SELECT `id` FROM `auth_user` WHERE `auth_user`.`email` = '"+mail+"' LIMIT 1" )
+			mail_exists = cursor.fetchone()
+			if form['type']=='retirer':
+				if mail_exists == None:
+					message_6 = 'Le mail entré n\'existe pas'
+					return HttpResponseRedirect(reverse('admin_interface')+'?message_6='+message_6)
+				else:
+					user_id = mail_exists[0]
+					cursor.execute("UPDATE `auth_user` SET `is_superuser` = 0 WHERE `auth_user`.`id` = "+str(user_id))
+					message_6 = 'Le mail entré a été retiré des administrateurs'
+					return HttpResponseRedirect(reverse('admin_interface')+'?message_6='+message_6)
+			if form['type']=='ajouter':
+				if mail_exists == None:
+					message_5 = 'Le mail entré n\'existe pas'
+					return HttpResponseRedirect(reverse('admin_interface')+'?message_5='+message_5)
+				else:
+					user_id = mail_exists[0]
+					cursor.execute("UPDATE `auth_user` SET `is_superuser` = 1 WHERE `auth_user`.`id` = "+str(user_id))	
+					message_5 = 'Le mail entré a été ajouté des administrateurs'	
+					return HttpResponseRedirect(reverse('admin_interface')+'?message_5='+message_5)
+		return HttpResponseRedirect(reverse('admin_interface'))		
+		
+		
+		
 
 def init_base(request):
 	"""

@@ -1,5 +1,8 @@
 from django.db import connection
+from django.http import HttpResponseRedirect
+from django.urls import reverse
 import random
+from datetime import datetime, timedelta
 import string
 
 ############################################################################################################
@@ -103,3 +106,47 @@ def token_generator(size=200, chars=string.ascii_lowercase + string.ascii_upperc
 		A str of 200 length
 	"""
 	return ''.join(random.choice(chars) for _ in range(size))
+
+
+def connexion_requise(function):
+	"""
+	Decorator used to add the login permission
+	"""
+	def decorator(*args, **kwargs):
+		with connection.cursor() as cursor:
+			######### Récupération du compte de l'utilisateur ###############
+			request = args[0]
+			if request.session.session_key == None:
+				return HttpResponseRedirect(reverse('connexion')+'?next='+request.get_full_path())
+			cursor.execute("SELECT `django_session`.`session_data` FROM `django_session` WHERE (`django_session`.`expire_date` > '"+datetime.now().strftime('%Y-%m-%d %H:%M:%S')+"' AND `django_session`.`session_key` = '"+request.session.session_key+"')")
+			session_data = cursor.fetchone()
+			if session_data is not None:
+				function(*args, **kwargs)
+			else:
+				return HttpResponseRedirect(reverse('connexion')+'?next='+request.get_full_path())
+	return decorator
+
+
+def admin_requis(function):
+	"""
+	Decorator used to add the admin permission
+	"""
+	def decorator(*args, **kwargs):
+		with connection.cursor() as cursor:
+			request = args[0]
+			if request.session.session_key == None:
+				return HttpResponseRedirect(reverse('connexion')+'?next='+request.get_full_path())
+			cursor.execute("SELECT `django_session`.`session_data` FROM `django_session` WHERE (`django_session`.`expire_date` > '"+datetime.now().strftime('%Y-%m-%d %H:%M:%S')+"' AND `django_session`.`session_key` = '"+request.session.session_key+"')")
+			session_data = cursor.fetchone()
+			if session_data is not None:
+				user_id = request.session.decode(session_data)['_auth_user_id']
+				cursor.execute("SELECT `auth_user`.`is_superuser` FROM `auth_user` WHERE `auth_user`.`id` = "+str(user_id))
+				is_superuser = cursor.fetchone()[0] == 1
+				if is_superuser:
+					function(*args, **kwargs)
+				else:
+					return HttpResponseRedirect(reverse('connexion')+'?next='+request.get_full_path())
+				
+			else:
+				return HttpResponseRedirect(reverse('connexion')+'?next='+request.get_full_path())
+	return decorator

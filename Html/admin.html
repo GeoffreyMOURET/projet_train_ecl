@@ -173,5 +173,51 @@
         <hr>
       </div> <!-- /container -->
 
+      <div class="container">
+	<div class = formulaire >
+	<form id = form_5 action="{% url 'admin_gestion' %}" method="post" >
+	{% csrf_token %}
+	<input type=hidden name=type value=ajouter>
+	<p> Ajouter un administrateur </p>
+	{% if message_5 %}
+	<p class = erreur> {{message_5}} </p>
+	{% endif %}
+	
+	<label for = 'mail'> Mail du nouvel administrateur : 
+	<input id = "mail" type=text name="mail" autocomplete="off" required> </label>
+	<p><a class="btn btn-primary btn-lg" role="button" onclick="submit_5()" style='color:white'>Ajouter</a></p>
+	
+	</form>
+
+	</div>
+
+
+
+        <hr>
+      </div> <!-- /container -->
+	
+      <div class="container">
+	<div class = formulaire >
+	<form id = form_6 action="{% url 'admin_gestion' %}" method="post" >
+	{% csrf_token %}
+	<input type=hidden name=type value=retirer>
+	<p> Retirer un administrateur </p>
+	{% if message_6 %}
+	<p class = erreur> {{message_6}} </p>
+	{% endif %}
+	
+	<label for = 'mail'> Mail de l'administrateur à retirer : 
+	<input id = "mail" type=text name="mail" autocomplete="off" required> </label>
+	<p><a class="btn btn-primary btn-lg" role="button" onclick="submit_6()" style='color:white'>Retirer</a></p>
+	
+	</form>
+
+	</div>
+
+
+
+        <hr>
+      </div> <!-- /container -->
+
 	
 {% endblock %}
