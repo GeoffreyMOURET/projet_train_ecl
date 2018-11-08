@@ -84,7 +84,6 @@ function submit_2() {
 
             success: function(data){
 		$('.erreur').hide();
-		$('#apercu').show();
 		$('#billet_numero').html(data['numero']);
 		$('#billet_gare_depart').html(data['gare_depart']);
 		$('#billet_gare_depart_2').html(data['gare_depart']);
@@ -114,6 +113,7 @@ function submit_2() {
 		$('#numero_paiement').attr('value',data['numero_billet']);
 		
 		$('#agence_paiement').attr('value',data['agence']);
+		$('#apercu').show(200);
 		
 
             }
