@@ -1,41 +1,76 @@
-.jumbotron {
-    background-image: url('../image/bandereau.jpg');
-    background-size: 100% 100%;
-    background-repeat: no-repeat;
+@media (min-width:768px) {
+	label {
+	    display:block;
+	}
+	label.inline {
+	    display:inline;
+	}
+
+	.formulaire {
+		position:relative;
+		border-radius:10px;
+		background-color:#DDDDDD;
+		margin:20px 15%;
+		text-align:center;
+
+	}
+
+	.formulaire p {
+		font-size:1.4em;
+		padding:5px;
+		font-weight:bold;
+		}
+
+	.formulaire .erreur {
+		margin:0;
+		color:red;
+		}
+
+	#creer_compte {
+		font-size:14px;
+		padding:5px;
+		position:absolute;
+		margin:5px;
+		bottom:0;
+		right:0
+	}
 
 }
-label {
-    display:block;
-}
-label.inline {
-    display:inline;
-}
 
-.formulaire {
-position:relative;
-border:solid;
-background-color:#DDDDDD;
-margin:20px 15%;
-text-align:center;
+@media (max-width:767.98px) {
+	label {
+	    display:block;
+	}
+	label.inline {
+	    display:inline;
+	}
 
-}
+	.formulaire {
+		position:relative;
+		border-radius:10px;
+		background-color:#DDDDDD;
+		margin:20px 5%;
+		text-align:center;
 
-.formulaire p {
-font-size:1.4em;
-padding:5px;
-font-weight:bold;
-}
+	}
 
-.formulaire .erreur {
-margin:0;
-color:red;
-}
+	.formulaire p {
+		font-size:1.4em;
+		padding:5px;
+		font-weight:bold;
+	}
 
-#creer_compte {
-font-size:14px;
-padding:5px;
-position:absolute;
-margin:5px;
-bottom:0;
-right:0
+	.formulaire .erreur {
+		margin:0;
+		color:red;
+	}
+
+	#creer_compte {
+		font-size:14px;
+		padding:5px;
+		position:absolute;
+		margin:5px;
+		bottom:0;
+		right:0
+	}
 }

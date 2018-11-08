@@ -1,9 +1,4 @@
-.jumbotron {
-    background-image: url('../image/bandereau.jpg');
-    background-size: 100% 100%;
-    background-repeat: no-repeat;
-
-}
+@media (min-width:768px) {
 label {
     display:block;
 }
@@ -44,4 +39,54 @@ color:red;
 font-weight:bold;
 text-align:center;
 font-size:1.5em;
+}
+}
+
+@media (max-width:767.98px) {
+label {
+    display:block;
+}
+label.inline {
+    display:inline;
+}
+
+.formulaire {
+position:relative;
+border-radius:10px;
+background-color:#DDDDDD;
+margin:20px 5%;
+text-align:center;
+
+}
+
+.formulaire p {
+font-size:1.2em;
+font-weight:bold;
+}
+
+.formulaire .erreur {
+margin:0;
+color:red;
+}
+
+#creer_compte {
+font-size:0.6em;
+padding:5px;
+position:absolute;
+margin:5px;
+bottom:0;
+right:0
+}
+
+.message {
+color:red;
+font-weight:bold;
+text-align:center;
+font-size:1.5em;
+}
+
+#valider {
+font-size:0.8em;
+font-weight:bold;
+}
 }
