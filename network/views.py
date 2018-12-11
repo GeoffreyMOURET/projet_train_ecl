@@ -638,7 +638,7 @@ def admin_interface(request):
 			# Sinon, les informations ont été rentrées correctement
 			else:
 				# On crée un nouveau train et on récupère son id
-				cursor.execute("INSERT INTO `train` (`id`,`prix`,) VALUES (DEFAULT,"+str(prix)+")")
+				cursor.execute("INSERT INTO train(id,prix) VALUES (DEFAULT,"+str(prix)+")")
 				cursor.execute("SELECT LAST_INSERT_ID() FROM `train`")
 				train_id = cursor.fetchone()[0]
 				
