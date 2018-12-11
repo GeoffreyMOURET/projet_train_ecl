@@ -121,7 +121,7 @@ def rechercher_trajet(request):
 					date_arrivee = heure_arrivee.strftime('%d/%m/%Y')
 					heure_depart = heure_depart.strftime('%H:%M')
 					heure_arrivee = heure_arrivee.strftime('%H:%M')
-					prix = liste_prix[i]*
+					prix = liste_prix[i]*pourcentage
 					liste_resultat.append(Resultat_train(
 							numero,
 							form['gare_depart'],
