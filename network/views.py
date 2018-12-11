@@ -270,7 +270,7 @@ def reserver_billet(request):
 				reduction_id = 1
 			cursor.execute("SELECT `pourcentage` FROM `reduction` WHERE `id`="+str(reduction_id))
 			pourcentage = cursor.fetchone()[0]
-			cursor.execute("INSERT INTO `billet` (`place_id`,`client_id`,`confirmation_id`,`gare_depart_id`,`gare_arrivee_id`,`prix`,`reduction_id`) VALUES ("+str(place_id)+","+str(client_id)+","+str(confirmation_id)+","+str(gare_arret_depart_id)+","+str(gare_arret_arrivee_id)+", "+str(round(prix*pourcentage,2))+","+reduction_id+")")
+			cursor.execute("INSERT INTO `billet` (`place_id`,`client_id`,`confirmation_id`,`gare_depart_id`,`gare_arrivee_id`,`prix`,`reduction_id`) VALUES ("+str(place_id)+","+str(client_id)+","+str(confirmation_id)+","+str(gare_arret_depart_id)+","+str(gare_arret_arrivee_id)+", "+str(round(prix*pourcentage,2))+","+str(reduction_id)+")")
 			cursor.execute("SELECT LAST_INSERT_ID() FROM `billet`")
 			billet_id = cursor.fetchone()[0]
 			
