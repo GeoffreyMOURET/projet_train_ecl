@@ -80,8 +80,9 @@ def rechercher_trajet(request):
 					cursor.execute("SELECT `gare_arret`.`numero` FROM `gare_arret` WHERE (`gare_arret`.`train_id` = "+str(train)+" AND `gare_arret`.`gare_id` = "+str(gare_depart_id)+")")
 					numero_depart = cursor.fetchone()[0]
 					cursor.execute("SELECT `gare_arret`.`numero` FROM `gare_arret` WHERE (`gare_arret`.`train_id` = "+str(train)+" AND `gare_arret`.`gare_id` = "+str(gare_arrivee_id)+")")
-					if cursor.fetchone() is not None:
-						numero_arrivee = cursor.fetchone()[0]
+					numero_arrivee = cursor.fetchone()
+					if numero_arrivee is not None:
+						numero_arrivee = numero_arrivee[0]
 						
 						if numero_depart < numero_arrivee:
 							liste_train.append(train)
