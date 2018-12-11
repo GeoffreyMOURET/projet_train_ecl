@@ -260,7 +260,7 @@ def reserver_billet(request):
 		
 			# Récupération de l'id du client
 			cursor.execute("SELECT `client`.`id`,`client`.`reduction_id` FROM `client` WHERE `client`.`user_id` = "+str(user_id))
-			client_id,reduction_id = cursor.fetchone()[0]
+			client_id,reduction_id = cursor.fetchone()
 			
 			# Création de la confirmation
 			cursor.execute("INSERT INTO `confirmation` (`heure_fin`,`validation`) VALUES ('"+(datetime.now()+timedelta(days = 10, hours = 1, minutes = 0, seconds = 0)).strftime('%Y-%m-%d %H:%M:%S.%s')+"',0)")
