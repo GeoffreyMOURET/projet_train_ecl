@@ -107,8 +107,8 @@ def rechercher_trajet(request):
 					prix = random.randint(80,100)
 					liste_resultat.append(Resultat_train(
 							numero,
-							gare_depart,
-							gare_arrivee,
+							form['gare_depart'],
+							form['gare_arrivee'],
 							date_depart,
 							date_arrivee,
 							heure_depart,
