@@ -78,10 +78,11 @@ def rechercher_trajet(request):
 					cursor.execute("SELECT `gare_arret`.`numero` FROM `gare_arret` WHERE (`gare_arret`.`train_id` = "+str(train)+" AND `gare_arret`.`gare_id` = "+str(gare_depart_id)+")")
 					numero_depart = cursor.fetchone()[0]
 					cursor.execute("SELECT `gare_arret`.`numero` FROM `gare_arret` WHERE (`gare_arret`.`train_id` = "+str(train)+" AND `gare_arret`.`gare_id` = "+str(gare_arrivee_id)+")")
-					numero_arrivee = cursor.fetchone()[0]
-					
-					if numero_depart < numero_arrivee:
-						liste_train.append(train)
+					if cursor.fetchone() is not None:
+						numero_arrivee = cursor.fetchone()[0]
+						
+						if numero_depart < numero_arrivee:
+							liste_train.append(train)
 				requete = Requete(gare_depart, gare_arrivee, date)
 				liste_resultat = []
 				for train in liste_train:
@@ -237,11 +238,11 @@ def reserver_billet(request):
 			client_id = cursor.fetchone()[0]
 			
 			# Création de la confirmation
-			cursor.execute("INSERT INTO `confirmation` (`heure_fin`,`validation`) VALUES ('"+(datetime.now()+timedelta(days = 0, hours = 1, minutes = 0, seconds = 0)).strftime('%Y-%m-%d %H:%M:%S.%s')+"',0)")
+			cursor.execute("INSERT INTO `confirmation` (`heure_fin`,`validation`) VALUES ('"+(datetime.now()+timedelta(days = 10, hours = 1, minutes = 0, seconds = 0)).strftime('%Y-%m-%d %H:%M:%S.%s')+"',0)")
 			cursor.execute("SELECT LAST_INSERT_ID() FROM `confirmation`")
 			confirmation_id = cursor.fetchone()[0]
 			
-			cursor.execute("INSERT INTO `billet` (`place_id`,`client_id`,`confirmation_id`,`gare_depart_id`,`gare_arrivee_id`,`prix`) VALUES ("+str(place_id)+","+str(client_id)+","+str(confirmation_id)+","+str(gare_arret_depart_id)+","+str(gare_arret_arrivee_id)+", 100.0)")
+			cursor.execute("INSERT INTO `billet` (`place_id`,`client_id`,`confirmation_id`,`gare_depart_id`,`gare_arrivee_id`,`prix`,`reduction_id`) VALUES ("+str(place_id)+","+str(client_id)+","+str(confirmation_id)+","+str(gare_arret_depart_id)+","+str(gare_arret_arrivee_id)+", 100.0,1)")
 			cursor.execute("SELECT LAST_INSERT_ID() FROM `billet`")
 			billet_id = cursor.fetchone()[0]
 			
@@ -740,9 +741,13 @@ def admin_recherche_billet(request):
 			cursor.execute("SELECT `gare`.`nom` FROM `gare` WHERE `gare`.`id` = "+str(gare_id_arrivee))
 			nom_gare_arrivee = cursor.fetchone()[0]
 			
+			# Si jamais la réduction n'a pas été définie à l'achat, on prend la réduction par défaut
+			if reduction_id == None:
+				cursor.execute("UPDATE `billet` SET `reduction_id` = 1 WHERE `billet`.`id` = "+str(numero))
+				reduction_id = 1
 			cursor.execute("SELECT `reduction`.`nom` FROM `reduction` WHERE `reduction`.`id` = "+str(reduction_id))
 			nom_reduction = cursor.fetchone()[0]
-			
+						
 			if confirmation_id == None:
 				validation = 0
 			else:
@@ -893,6 +898,12 @@ def init_base(request):
 	
 	"""
 	if request.method == 'POST':
+		with connection.cursor() as cursor: #Connexion a la base de donnees
+			cursor.execute("CREATE TRIGGER del_train BEFORE DELETE ON train FOR EACH ROW DELETE FROM voiture WHERE train_id=OLD.id;")
+			cursor.execute("CREATE TRIGGER del_voiture BEFORE DELETE ON voiture FOR EACH ROW DELETE FROM place WHERE voiture_id=OLD.id;")
+			cursor.execute("CREATE TRIGGER del_billet BEFORE DELETE ON place FOR EACH ROW DELETE FROM billet WHERE place_id=OLD.id;")
+			cursor.execute("CREATE TRIGGER del_confirmation BEFORE DELETE ON billet FOR EACH ROW DELETE FROM confirmation WHERE id=OLD.confirmation_id;")
+
 		print('Coucou')
 		
 		Situation.objects.create(nom = 'fenetre')
