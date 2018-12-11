@@ -281,6 +281,7 @@ def reserver_billet(request):
 			cursor.execute("SELECT `voiture`.`train_id`,`voiture`.`numero` FROM `voiture` WHERE `voiture`.`id` = "+str(voiture_id))
 			train_id,numero_voiture = cursor.fetchone()
 			
+			
 			# Récupération de l'heure de départ et du nom de la gare de départ
 			cursor.execute("SELECT `gare_arret`.`gare_id`, `gare_arret`.`heure` FROM `gare_arret` WHERE `gare_arret`.`id` = "+str(gare_arret_depart_id))
 			gare_depart_id, heure_depart = cursor.fetchone()
@@ -590,7 +591,7 @@ def reservation(request):
 				heure_arrivee.strftime('%d/%m/%Y'),
 				heure_depart.strftime('%H:%M'),
 				heure_arrivee.strftime('%H:%M'),
-				100,
+				prix,
 				numero_voiture,
 				numero_place,
 				billet_id
