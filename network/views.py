@@ -124,8 +124,8 @@ def rechercher_trajet(request):
 				cursor.execute("INSERT INTO `token` (`valeur`, `date_fin`) VALUES ('"+token+"', '"+date_fin.strftime('%Y-%m-%d %H:%M:%S')+"')")
 				dico = {
 					'token':token,
-					'gare_depart':gare_depart,
-					'gare_arrivee':gare_arrivee,
+					'gare_depart':form['gare_depart'],
+					'gare_arrivee':form['gare_arrivee'],
 					'date': date.strftime('%d/%m/%Y'),
 					'requete':requete,
 					'liste_train' : liste_resultat
