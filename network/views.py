@@ -116,12 +116,11 @@ def rechercher_trajet(request):
 					nb_place_total = cursor.fetchone()[0]
 					cursor.execute("SELECT COUNT(`billet`.`id`) FROM `billet` INNER JOIN `place` ON (`billet`.`place_id` = `place`.`id`) INNER JOIN `voiture` ON (`place`.`voiture_id` = `voiture`.`id`) INNER JOIN `gare_arret` ON (`billet`.`gare_depart_id` = `gare_arret`.`id`) INNER JOIN `gare_arret` GA ON (`billet`.`gare_arrivee_id` = GA.`id`) WHERE (`voiture`.`train_id` = "+str(train)+" AND `gare_arret`.`numero` <= "+str(numero_arrivee-1)+" AND GA.`numero` >= "+str(numero_depart+1)+")")
 					
-					
+					nb_billet_reserve = cursor.fetchone()[0]
 					
 					cursor.execute("SELECT `pourcentage` FROM `reduction` WHERE `id`="+str(reduction_id))
 					pourcentage = cursor.fetchone()[0]
 					
-					nb_billet_reserve = cursor.fetchone()[0]
 					nb_place = nb_place_total - nb_billet_reserve
 					date_depart = heure_depart.strftime('%d/%m/%Y')
 					date_arrivee = heure_arrivee.strftime('%d/%m/%Y')
