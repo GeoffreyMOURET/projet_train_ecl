@@ -51,7 +51,7 @@ def rechercher_trajet(request):
 			form = request.POST
 			gare_depart = form['gare_depart'].replace("\"","'")
 			gare_arrivee = form['gare_arrivee'].replace("\"","'")
-			gare_arrivee = form['gare_arrivee'].replace("\'","\\\'")
+			gare_depart = form['gare_depart'].replace("\'","\\\'")
 			gare_arrivee = form['gare_arrivee'].replace("\'","\\\'")
 			date = form['date']
 			cursor.execute("SELECT COUNT(id) FROM `gare` WHERE `gare`.`nom` = '"+gare_depart+"' LIMIT 1")
