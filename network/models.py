@@ -113,6 +113,7 @@ class Token(models.Model):
         db_table = 'token'
 
 class Train(models.Model):
+    prix = models.FloatField(blank=True, null=True)
     class Meta:
         managed = True
         db_table = 'train'

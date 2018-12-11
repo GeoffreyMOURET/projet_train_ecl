@@ -212,8 +212,8 @@ def reserver_billet(request):
 				liste_gare = get_liste_gare()
 				return render(request, 'rechercher_billet.html', {'liste_gare':liste_gare, 'erreur':True, 'message':'Votre session de reservation a expirée'})
 			cursor.execute("DELETE FROM `token` WHERE `token`.`valeur` = '"+form['token'].replace('\'','\\\'')+"'")
-			train = Train.objects.get(id = int(form['train_id']))
 			train_id = form['train_id']
+			prix = cursor.execute("SELECT `train`.`prix` FROM `train` WHERE `id`="+str(train_id)).fetchone()[0]
 			cursor.execute("SELECT `place`.`id` FROM `place` INNER JOIN `voiture` ON (`place`.`voiture_id` = `voiture`.`id`) LEFT OUTER JOIN `billet` ON (`place`.`id` = `billet`.`place_id`) WHERE (`voiture`.`train_id` = "+str(train_id)+" AND `billet`.`id` IS NULL) LIMIT 1")
 			liste_place = cursor.fetchone()
 			liste_place_exists = liste_place != None
@@ -236,15 +236,17 @@ def reserver_billet(request):
 			#################################################################
 		
 			# Récupération de l'id du client
-			cursor.execute("SELECT `client`.`id` FROM `client` WHERE `client`.`user_id` = "+str(user_id))
-			client_id = cursor.fetchone()[0]
+			cursor.execute("SELECT `client`.`id`,`client`.`reduction_id` FROM `client` WHERE `client`.`user_id` = "+str(user_id))
+			client_id,reduction_id = cursor.fetchone()[0]
 			
 			# Création de la confirmation
 			cursor.execute("INSERT INTO `confirmation` (`heure_fin`,`validation`) VALUES ('"+(datetime.now()+timedelta(days = 10, hours = 1, minutes = 0, seconds = 0)).strftime('%Y-%m-%d %H:%M:%S.%s')+"',0)")
 			cursor.execute("SELECT LAST_INSERT_ID() FROM `confirmation`")
 			confirmation_id = cursor.fetchone()[0]
-			
-			cursor.execute("INSERT INTO `billet` (`place_id`,`client_id`,`confirmation_id`,`gare_depart_id`,`gare_arrivee_id`,`prix`,`reduction_id`) VALUES ("+str(place_id)+","+str(client_id)+","+str(confirmation_id)+","+str(gare_arret_depart_id)+","+str(gare_arret_arrivee_id)+", 100.0,1)")
+			if reduction_id is None:
+				reduction_id = 1
+			pourcentage = cursor.execute("SELECT `pourcentage` FROM `reduction` WHERE `id`="+str(reduction_id)).fetchone()[0]
+			cursor.execute("INSERT INTO `billet` (`place_id`,`client_id`,`confirmation_id`,`gare_depart_id`,`gare_arrivee_id`,`prix`,`reduction_id`) VALUES ("+str(place_id)+","+str(client_id)+","+str(confirmation_id)+","+str(gare_arret_depart_id)+","+str(gare_arret_arrivee_id)+", "+str(round(prix*pourcentage,2))+","+reduction_id+")")
 			cursor.execute("SELECT LAST_INSERT_ID() FROM `billet`")
 			billet_id = cursor.fetchone()[0]
 			
@@ -635,7 +637,7 @@ def admin_interface(request):
 			# Sinon, les informations ont été rentrées correctement
 			else:
 				# On crée un nouveau train et on récupère son id
-				cursor.execute("INSERT INTO `train` (`id`) VALUES (DEFAULT)")
+				cursor.execute("INSERT INTO `train` (`id`,`prix`,) VALUES (DEFAULT,"+str(prix)+")")
 				cursor.execute("SELECT LAST_INSERT_ID() FROM `train`")
 				train_id = cursor.fetchone()[0]
 				
@@ -900,12 +902,7 @@ def init_base(request):
 	
 	"""
 	if request.method == 'POST':
-		with connection.cursor() as cursor: #Connexion a la base de donnees
-			cursor.execute("CREATE TRIGGER del_train BEFORE DELETE ON train FOR EACH ROW DELETE FROM voiture WHERE train_id=OLD.id;")
-			cursor.execute("CREATE TRIGGER del_voiture BEFORE DELETE ON voiture FOR EACH ROW DELETE FROM place WHERE voiture_id=OLD.id;")
-			cursor.execute("CREATE TRIGGER del_billet BEFORE DELETE ON place FOR EACH ROW DELETE FROM billet WHERE place_id=OLD.id;")
-			cursor.execute("CREATE TRIGGER del_confirmation BEFORE DELETE ON billet FOR EACH ROW DELETE FROM confirmation WHERE id=OLD.confirmation_id;")
-
+		
 		print('Coucou')
 		
 		Situation.objects.create(nom = 'fenetre')
@@ -981,7 +978,7 @@ def init_base(request):
 		Client.objects.create(user = user, reduction = Reduction.objects.filter(nom = 'Etudiant').get(), statut = Statut.objects.filter(nom = 'adulte').get())
 		
 		liste_billet = []
-		liste_train = [Train.objects.get(pk = i) for i in range(1,10)]
+		liste_train = [Train.objects.get(pk = i, prix = 100) for i in range(1,10)]
 		for train in liste_train:
 			liste_voiture = Voiture.objects.filter(train = train).order_by('numero')
 			for voiture in liste_voiture:
