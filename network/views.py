@@ -48,6 +48,12 @@ def rechercher_trajet(request):
 		gare_arrivee = ''
 		date = ''
 		if request.method == 'POST':
+			######### Récupération du compte de l'utilisateur ###############
+			cursor.execute("SELECT `django_session`.`session_data` FROM `django_session` WHERE (`django_session`.`expire_date` > '"+datetime.now().strftime('%Y-%m-%d %H:%M:%S')+"' AND `django_session`.`session_key` = '"+request.session.session_key+"')")
+			session_data = cursor.fetchone()[0]
+			message = ""
+			user_id = request.session.decode(session_data)['_auth_user_id']
+			#################################################################
 			# Récupération des informations concernant le profil de l'utilisateur
 			cursor.execute("SELECT `auth_user`.`first_name`, `auth_user`.`last_name`, `auth_user`.`email` FROM `auth_user` WHERE `auth_user`.`id` = "+str(user_id))
 			first_name, last_name, email = cursor.fetchone()
@@ -121,7 +127,7 @@ def rechercher_trajet(request):
 					date_arrivee = heure_arrivee.strftime('%d/%m/%Y')
 					heure_depart = heure_depart.strftime('%H:%M')
 					heure_arrivee = heure_arrivee.strftime('%H:%M')
-					prix = liste_prix[i]*pourcentage
+					prix = round(liste_prix[i]*pourcentage,2)
 					liste_resultat.append(Resultat_train(
 							numero,
 							form['gare_depart'],
