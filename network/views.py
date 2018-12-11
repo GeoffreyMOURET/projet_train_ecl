@@ -48,6 +48,13 @@ def rechercher_trajet(request):
 		gare_arrivee = ''
 		date = ''
 		if request.method == 'POST':
+			# Récupération des informations concernant le profil de l'utilisateur
+			cursor.execute("SELECT `auth_user`.`first_name`, `auth_user`.`last_name`, `auth_user`.`email` FROM `auth_user` WHERE `auth_user`.`id` = "+str(user_id))
+			first_name, last_name, email = cursor.fetchone()
+			cursor.execute("SELECT `client`.`statut_id`,`client`.`reduction_id` FROM `client` WHERE `client`.`user_id` = "+str(user_id))
+			statut_id, reduction_id = cursor.fetchone()
+			########
+			
 			form = request.POST
 			gare_depart = form['gare_depart'].replace("\"","'")
 			gare_arrivee = form['gare_arrivee'].replace("\"","'")
@@ -75,6 +82,7 @@ def rechercher_trajet(request):
 				cursor.execute("SELECT `gare_arret`.`train_id` FROM `gare_arret` WHERE (`gare_arret`.`heure` >= '"+date.strftime("%Y-%m-%d")+" 00:00:00' AND `gare_arret`.`heure` <= '"+date_fin.strftime("%Y-%m-%d")+" 00:00:00' AND `gare_arret`.`gare_id` = "+str(gare_depart_id)+")")
 				liste_train_depart_id = cursor.fetchall()
 				liste_train = []
+				liste_prix = []
 				for train in liste_train_depart_id:
 					train = train[0]
 					cursor.execute("SELECT `gare_arret`.`numero` FROM `gare_arret` WHERE (`gare_arret`.`train_id` = "+str(train)+" AND `gare_arret`.`gare_id` = "+str(gare_depart_id)+")")
@@ -83,12 +91,14 @@ def rechercher_trajet(request):
 					numero_arrivee = cursor.fetchone()
 					if numero_arrivee is not None:
 						numero_arrivee = numero_arrivee[0]
-						
+						cursor.execute("SELECT prix FROM train WHERE id="+str(train))
+						prix = cursor.fetchone()[0]
 						if numero_depart < numero_arrivee:
 							liste_train.append(train)
+							liste_prix.append(prix)
 				requete = Requete(gare_depart, gare_arrivee, date)
 				liste_resultat = []
-				for train in liste_train:
+				for i,train in enumerate(liste_train):
 					numero = train
 					cursor.execute("SELECT `gare_arret`.`id`,`gare_arret`.`numero`,`gare_arret`.`heure` FROM `gare_arret` WHERE (`gare_arret`.`train_id` = "+str(train)+" AND `gare_arret`.`gare_id` = "+str(gare_depart_id)+")")
 					id_depart, numero_depart, heure_depart = cursor.fetchone()
@@ -99,13 +109,19 @@ def rechercher_trajet(request):
 					cursor.execute("SELECT COUNT(`place`.`id`) FROM `place` INNER JOIN `voiture` ON (`place`.`voiture_id` = `voiture`.`id`) WHERE `voiture`.`train_id` = "+str(train))
 					nb_place_total = cursor.fetchone()[0]
 					cursor.execute("SELECT COUNT(`billet`.`id`) FROM `billet` INNER JOIN `place` ON (`billet`.`place_id` = `place`.`id`) INNER JOIN `voiture` ON (`place`.`voiture_id` = `voiture`.`id`) INNER JOIN `gare_arret` ON (`billet`.`gare_depart_id` = `gare_arret`.`id`) INNER JOIN `gare_arret` GA ON (`billet`.`gare_arrivee_id` = GA.`id`) WHERE (`voiture`.`train_id` = "+str(train)+" AND `gare_arret`.`numero` <= "+str(numero_arrivee-1)+" AND GA.`numero` >= "+str(numero_depart+1)+")")
+					
+					
+					
+					cursor.execute("SELECT `pourcentage` FROM `reduction` WHERE `id`="+str(reduction_id))
+					pourcentage = cursor.fetchone()[0]
+					
 					nb_billet_reserve = cursor.fetchone()[0]
 					nb_place = nb_place_total - nb_billet_reserve
 					date_depart = heure_depart.strftime('%d/%m/%Y')
 					date_arrivee = heure_arrivee.strftime('%d/%m/%Y')
 					heure_depart = heure_depart.strftime('%H:%M')
 					heure_arrivee = heure_arrivee.strftime('%H:%M')
-					prix = random.randint(80,100)
+					prix = liste_prix[i]*
 					liste_resultat.append(Resultat_train(
 							numero,
 							form['gare_depart'],
@@ -214,7 +230,8 @@ def reserver_billet(request):
 				return render(request, 'rechercher_billet.html', {'liste_gare':liste_gare, 'erreur':True, 'message':'Votre session de reservation a expirée'})
 			cursor.execute("DELETE FROM `token` WHERE `token`.`valeur` = '"+form['token'].replace('\'','\\\'')+"'")
 			train_id = form['train_id']
-			prix = cursor.execute("SELECT `train`.`prix` FROM `train` WHERE `id`="+str(train_id)).fetchone()[0]
+			cursor.execute("SELECT `train`.`prix` FROM `train` WHERE `id`="+str(train_id))
+			prix = cursor.fetchone()[0]
 			cursor.execute("SELECT `place`.`id` FROM `place` INNER JOIN `voiture` ON (`place`.`voiture_id` = `voiture`.`id`) LEFT OUTER JOIN `billet` ON (`place`.`id` = `billet`.`place_id`) WHERE (`voiture`.`train_id` = "+str(train_id)+" AND `billet`.`id` IS NULL) LIMIT 1")
 			liste_place = cursor.fetchone()
 			liste_place_exists = liste_place != None
@@ -246,7 +263,8 @@ def reserver_billet(request):
 			confirmation_id = cursor.fetchone()[0]
 			if reduction_id is None:
 				reduction_id = 1
-			pourcentage = cursor.execute("SELECT `pourcentage` FROM `reduction` WHERE `id`="+str(reduction_id)).fetchone()[0]
+			cursor.execute("SELECT `pourcentage` FROM `reduction` WHERE `id`="+str(reduction_id))
+			pourcentage = cursor.fetchone()[0]
 			cursor.execute("INSERT INTO `billet` (`place_id`,`client_id`,`confirmation_id`,`gare_depart_id`,`gare_arrivee_id`,`prix`,`reduction_id`) VALUES ("+str(place_id)+","+str(client_id)+","+str(confirmation_id)+","+str(gare_arret_depart_id)+","+str(gare_arret_arrivee_id)+", "+str(round(prix*pourcentage,2))+","+reduction_id+")")
 			cursor.execute("SELECT LAST_INSERT_ID() FROM `billet`")
 			billet_id = cursor.fetchone()[0]
