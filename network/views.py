@@ -51,10 +51,12 @@ def rechercher_trajet(request):
 			form = request.POST
 			gare_depart = form['gare_depart'].replace("\"","'")
 			gare_arrivee = form['gare_arrivee'].replace("\"","'")
+			gare_arrivee = form['gare_arrivee'].replace("\'","\\\'")
+			gare_arrivee = form['gare_arrivee'].replace("\'","\\\'")
 			date = form['date']
-			cursor.execute("SELECT COUNT(id) FROM `gare` WHERE `gare`.`nom` = `"+gare_depart+"` LIMIT 1")
+			cursor.execute("SELECT COUNT(id) FROM `gare` WHERE `gare`.`nom` = '"+gare_depart+"' LIMIT 1")
 			gare_depart_exists = cursor.fetchone()[0] == 1
-			cursor.execute("SELECT COUNT(id) FROM `gare` WHERE `gare`.`nom` = `"+gare_arrivee+"` LIMIT 1")
+			cursor.execute("SELECT COUNT(id) FROM `gare` WHERE `gare`.`nom` = '"+gare_arrivee+"' LIMIT 1")
 			gare_arrivee_exists = cursor.fetchone()[0] == 1
 			if not gare_depart_exists :
 				message = "La gare de départ sélectionnée n'existe pas"
@@ -63,9 +65,9 @@ def rechercher_trajet(request):
 			elif gare_arrivee == gare_depart:
 				message = "Merci de sélectionner deux gares différentes"
 			elif form['modifier'] == '0':
-				cursor.execute("SELECT id FROM `gare` WHERE `gare`.`nom` = `"+gare_depart+"` LIMIT 1")
+				cursor.execute("SELECT id FROM `gare` WHERE `gare`.`nom` = '"+gare_depart+"' LIMIT 1")
 				gare_depart_id = cursor.fetchone()[0]
-				cursor.execute("SELECT id FROM `gare` WHERE `gare`.`nom` = `"+gare_arrivee+"` LIMIT 1")
+				cursor.execute("SELECT id FROM `gare` WHERE `gare`.`nom` = '"+gare_arrivee+"' LIMIT 1")
 				gare_arrivee_id = cursor.fetchone()[0]
 				
 				date = datetime.strptime(form['date'], '%Y-%m-%d')
